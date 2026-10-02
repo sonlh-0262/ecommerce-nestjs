@@ -1,0 +1,15 @@
+{
+  "NOT_EMPTY": "{property} must not be empty",
+  "IS_STRING": "{property} must be a string",
+  "IS_OBJECT": "{property} must be an object",
+  "IS_ARRAY": "{property} must be an array",
+  "IS_INT": "{property} must be an integer",
+  "IS_NUMBER": "{property} must be a number",
+  "IS_BOOLEAN": "{property} must be a boolean",
+  "IS_EMAIL": "{property} must be a valid email address",
+  "MAX_LENGTH": "{property} must be shorter than or equal to {constraints.0} characters",
+  "MIN_LENGTH": "{property} must be longer than or equal to {constraints.0} characters",
+  "ARRAY_MAX_SIZE": "{property} must contain no more than {constraints.0} items",
+  "MIN": "{property} must not be less than {constraints.0}",
+  "MAX": "{property} must not be greater than {constraints.0}"
+}

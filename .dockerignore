@@ -1,0 +1,43 @@
+# Dependencies and build output are produced inside the image
+node_modules
+dist
+coverage
+.nyc_output
+
+# TypeScript incremental build cache. Critical: if this is copied in while
+# `dist/` is not, `tsc` believes the output is already emitted and skips most
+# files, producing an incomplete build.
+*.tsbuildinfo
+
+# VCS / CI
+.git
+.gitignore
+.github
+
+# Docs (README is kept for the image metadata)
+*.md
+!README.md
+document
+
+# Local environment
+.env
+.env.local
+.env.*.local
+
+# Logs and caches
+npm-debug.log*
+.eslintcache
+.npm
+.cache
+
+# Editors
+.idea
+.vscode
+
+# Docker files themselves
+Dockerfile
+.dockerignore
+docker-compose*.yml
+
+# Uploaded files belong to the runtime, not the image
+uploads

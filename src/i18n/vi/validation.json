@@ -1,0 +1,15 @@
+{
+  "NOT_EMPTY": "{property} không được để trống",
+  "IS_STRING": "{property} phải là chuỗi ký tự",
+  "IS_OBJECT": "{property} phải là một đối tượng",
+  "IS_ARRAY": "{property} phải là một mảng",
+  "IS_INT": "{property} phải là số nguyên",
+  "IS_NUMBER": "{property} phải là số",
+  "IS_BOOLEAN": "{property} phải là giá trị đúng/sai",
+  "IS_EMAIL": "{property} phải là địa chỉ email hợp lệ",
+  "MAX_LENGTH": "{property} không được dài quá {constraints.0} ký tự",
+  "MIN_LENGTH": "{property} phải có ít nhất {constraints.0} ký tự",
+  "ARRAY_MAX_SIZE": "{property} không được chứa quá {constraints.0} phần tử",
+  "MIN": "{property} không được nhỏ hơn {constraints.0}",
+  "MAX": "{property} không được lớn hơn {constraints.0}"
+}

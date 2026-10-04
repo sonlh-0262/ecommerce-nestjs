@@ -29,3 +29,15 @@ export const USERS_VERIFIED_STATUS_CHECK = 'CHK_users_verified_status';
  */
 export const USERS_VERIFIED_STATUS_EXPRESSION =
   "status <> 'ACTIVE' OR email_verified_at IS NOT NULL";
+
+export const USER_TOKENS_USER_FK = 'FK_user_tokens_user';
+
+export const UNIQUE_USER_TOKENS_HASH_INDEX = 'UQ_user_tokens_token_hash';
+
+export const USER_TOKENS_LOOKUP_INDEX = 'IDX_user_tokens_user_type';
+
+export const USER_TOKENS_UNUSED_CONDITION = 'used_at IS NULL';
+
+export const USER_TOKENS_EXPIRY_CHECK = 'CHK_user_tokens_expiry';
+
+export const USER_TOKENS_EXPIRY_EXPRESSION = 'expires_at > created_at';

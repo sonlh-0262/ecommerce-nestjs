@@ -20,3 +20,5 @@ export const FULL_NAME_MAX_LENGTH = 100;
 export const PHONE_MAX_LENGTH = 20;
 
 export const ADDRESS_MAX_LENGTH = 255;
+
+export const TOKEN_HASH_LENGTH = 64;

@@ -6,10 +6,18 @@ import {
   DeleteDateColumn,
   Entity,
   Index,
+  OneToMany,
+  OneToOne,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
 
+import { Cart } from '../../cart/entities/cart.entity';
+import { Conversation } from '../../chat/entities/conversation.entity';
+import { Message } from '../../chat/entities/message.entity';
+import { Order } from '../../orders/entities/order.entity';
+import { ProductSuggestion } from '../../product-suggestions/entities/product-suggestion.entity';
+import { Review } from '../../reviews/entities/review.entity';
 import { UserRole } from '../enums/user-role.enum';
 import { UserStatus } from '../enums/user-status.enum';
 import {
@@ -20,6 +28,7 @@ import {
   PHONE_MAX_LENGTH,
   USERNAME_MAX_LENGTH,
 } from '../users.constants';
+import { UserToken } from './user-token.entity';
 import {
   UNIQUE_USERS_USERNAME_INDEX,
   USERS_ALIVE_CONDITION,
@@ -109,6 +118,27 @@ export class User {
   /** A moment rather than a boolean, so support can see *when* it happened. */
   @Column({ name: 'email_verified_at', type: 'timestamptz', nullable: true })
   emailVerifiedAt: Date | null;
+
+  @OneToMany(() => UserToken, (token) => token.user)
+  tokens?: UserToken[];
+
+  @OneToOne(() => Cart, (cart) => cart.user)
+  cart?: Cart;
+
+  @OneToMany(() => Order, (order) => order.user)
+  orders?: Order[];
+
+  @OneToMany(() => Review, (review) => review.user)
+  reviews?: Review[];
+
+  @OneToMany(() => ProductSuggestion, (suggestion) => suggestion.user)
+  productSuggestions?: ProductSuggestion[];
+
+  @OneToOne(() => Conversation, (conversation) => conversation.user)
+  conversation?: Conversation;
+
+  @OneToMany(() => Message, (message) => message.sender)
+  messages?: Message[];
 
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt: Date;

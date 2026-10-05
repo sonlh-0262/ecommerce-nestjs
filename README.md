@@ -10,6 +10,8 @@ PostgreSQL.
 | Framework      | NestJS 11                            |
 | Database       | PostgreSQL 16 + TypeORM (migrations) |
 | Cache / tokens | Redis 7 (ioredis)                    |
+| Queue / mail   | BullMQ + nodemailer (Handlebars)     |
+| Rate limiting  | @nestjs/throttler, counted in Redis  |
 | Auth           | JWT (passport-jwt) + bcrypt          |
 | Validation     | class-validator + Joi (env)          |
 | i18n           | nestjs-i18n (`en`, `vi`)             |
@@ -38,12 +40,23 @@ tutorial project:
 | Debugger   | 9229         | 9230 |
 | PostgreSQL | 5432         | 5433 |
 | Redis      | 6379         | 6381 |
+| Mailpit    | 1025 / 8025  | 1026 / 8025 |
 
-Change any of these with `API_HOST_PORT`, `DEBUG_HOST_PORT`, `DB_HOST_PORT`
-and `REDIS_HOST_PORT` in `.env`.
+Change any of these with `API_HOST_PORT`, `DEBUG_HOST_PORT`, `DB_HOST_PORT`,
+`REDIS_HOST_PORT`, `MAILPIT_SMTP_HOST_PORT` and `MAILPIT_UI_HOST_PORT` in
+`.env`.
 
 - Swagger UI: <http://localhost:3001/docs>
 - Health check: <http://localhost:3001/health>
+- Mail sent by the app: <http://localhost:8025> (Mailpit - nothing leaves the
+  machine)
+
+After pulling a change that adds packages, rebuild the API image and renew its
+`node_modules` volume, or the container keeps running the old dependencies:
+
+```bash
+docker compose up -d --build -V api
+```
 
 ### Running without Docker
 
@@ -58,12 +71,58 @@ npm run start:dev
 Base URL `/api/v1`. `/health` and `/docs` sit outside it on purpose: a probe
 and the docs must not move when the API version does.
 
-| Method | Path           | Auth   | Description                                      |
-| ------ | -------------- | ------ | ------------------------------------------------ |
-| POST   | `/auth/login`  | Guest  | Exchange a password for an access token          |
-| POST   | `/auth/logout` | Bearer | Revoke the token used for the request            |
-| GET    | `/health`      | Guest  | Liveness probe, localised message                |
-| GET    | `/docs`        | Guest  | Swagger UI (`/docs-json` for the raw document)   |
+| Method | Path                         | Auth   | Rate limit             | Description                                    |
+| ------ | ---------------------------- | ------ | ---------------------- | ---------------------------------------------- |
+| POST   | `/auth/register`             | Guest  | 5 / 10 min / IP        | Create a PENDING account, email the activation |
+| POST   | `/auth/verify-email`         | Guest  | 10 / 10 min / IP       | Redeem the activation link                     |
+| POST   | `/auth/resend-verification`  | Guest  | 3 / 15 min / IP+email  | Email a fresh activation link (always 200)     |
+| POST   | `/auth/login`                | Guest  | 5 / 5 min / IP+email   | Exchange a password for an access token        |
+| POST   | `/auth/logout`               | Bearer | default                | Revoke the token used for the request          |
+| POST   | `/auth/forgot-password`      | Guest  | 3 / 15 min / IP+email  | Email a password reset link (always 200)       |
+| POST   | `/auth/reset-password`       | Guest  | 5 / 15 min / IP        | Redeem the reset link, set a new password      |
+| GET    | `/health`                    | Guest  | none                   | Liveness probe, localised message              |
+| GET    | `/docs`                      | Guest  | -                      | Swagger UI (`/docs-json` for the raw document) |
+
+Every route needs a bearer token unless it is marked `@Public()`: the JWT
+guard is global, so a route that forgets to declare itself is closed rather
+than open.
+
+Routes without a limit of their own are capped at `THROTTLE_LIMIT` requests
+per `THROTTLE_TTL` seconds per client (100 per 60 s by default). Counters live in Redis so the
+limit holds across instances; if Redis is down the limit is skipped rather than
+failing the request. Going over answers `429` with a `Retry-After` header.
+
+### Errors
+
+Every error, validation failures included, has one shape:
+
+```json
+{ "errors": { "body": ["Email or password is incorrect"] } }
+```
+
+Constraint violations that reach the global filter are mapped too: unique
+`409`, foreign key and check `422`. Anything unexpected is a `500` whose body
+says nothing about the cause - the stack goes to the log only.
+
+### Register and activate
+
+```bash
+curl -X POST http://localhost:3001/api/v1/auth/register   -H 'Content-Type: application/json'   -d '{"user":{"email":"new@example.com","username":"new_user","password":"Secret123"}}'
+```
+
+The account starts `PENDING` and cannot log in (`403`). The activation mail
+lands in Mailpit; its link is `APP_WEB_URL/verify-email?token=...`, and the
+front end posts that token to `/auth/verify-email`. Tokens are single use,
+stored as a SHA-256 hash, and expire after 24 hours (activation) or 30 minutes
+(password reset). Requesting a new link retires the previous one.
+
+### Reset a password
+
+`/auth/forgot-password` always answers `200` with the same message, so it
+cannot reveal which emails are registered. `/auth/reset-password` sets the new
+password, stamps `password_changed_at` - which makes every token issued
+before it fail with `401` - and activates the account if it was still
+`PENDING`, since the link proves the address.
 
 ### Log in
 
@@ -94,7 +153,7 @@ curl -X POST http://localhost:3001/api/v1/auth/login \
 ```
 
 Failures: `400` validation, `401` wrong email or password, `403` the account is
-`PENDING` or `INACTIVE`. The `401` is deliberately identical for an unknown
+`PENDING` or `INACTIVE`, `429` too many attempts. The `401` is deliberately identical for an unknown
 email and a wrong password, and an unknown email still pays for one bcrypt
 comparison, so the endpoint cannot be used to discover which addresses are
 registered.
@@ -133,6 +192,15 @@ one published password.
 | ------------------- | -------- | ----- | -------------- |
 | `admin@example.com` | admin    | ADMIN | `Password@123` |
 
+## Mail
+
+Feature code queues mail with `MailQueueService.enqueue()` after its
+transaction commits, and a BullMQ worker renders the Handlebars template and
+sends it. Jobs retry three times with exponential backoff. The language is
+captured from the request that queued the job, Vietnamese when there is none.
+Templates live in `src/mail/templates/`; every string they print comes from
+`src/i18n/*/mail.json`.
+
 ## Migrations
 
 Run these inside the API container, where `DB_HOST=postgres` resolves:
@@ -163,7 +231,8 @@ The e2e suite creates and migrates `ecommerce_test` on first run, and empties
 every table between cases. It refuses to start unless `DB_DATABASE` ends in
 `_test` and `REDIS_KEY_PREFIX` contains `test`, so it can never wipe a
 development database. It reads `.env.test`, which points at the host ports, so
-the Docker stack has to be up.
+the Docker stack has to be up. Mail is not sent from e2e: `MailQueueService` is
+replaced by a recorder, so a case can read the token a mail would have carried.
 
 ## Quality gates
 
@@ -180,9 +249,10 @@ npm run build
 
 ```
 src/
-  auth/         login, logout, JWT strategy, guard, token denylist
-  users/        User entity, enums, lookups, password hashing
-  common/       cross-cutting constants, shared DTOs, decorators, transforms
+  auth/         register, verify, login, logout, password reset, JWT guard
+  users/        User entity, lookups, password hashing, one-time tokens
+  mail/         BullMQ queue and worker, Handlebars templates
+  common/       error filter, decorators, throttling, shared DTOs, transforms
   config/       typed config namespaces, env validation, app + swagger setup
   database/     TypeORM data source, module, migrations, seeders
   redis/        shared ioredis client

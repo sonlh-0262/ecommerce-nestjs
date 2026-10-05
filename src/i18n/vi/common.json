@@ -1,3 +1,11 @@
 {
-  "health_ok": "Dịch vụ đang hoạt động bình thường"
+  "health_ok": "Dịch vụ đang hoạt động bình thường",
+  "DUPLICATE_RESOURCE": "Bản ghi này đã tồn tại",
+  "RELATED_RESOURCE_MISSING": "Bản ghi liên quan không tồn tại",
+  "CONSTRAINT_VIOLATED": "Dữ liệu vi phạm ràng buộc",
+  "INTERNAL_ERROR": "Đã có lỗi xảy ra, vui lòng thử lại sau",
+  "TOO_MANY_REQUESTS": "Bạn gửi quá nhiều yêu cầu, vui lòng thử lại sau",
+  "MALFORMED_REQUEST": "Không đọc được nội dung yêu cầu",
+  "PAYLOAD_TOO_LARGE": "Nội dung yêu cầu quá lớn",
+  "INVALID_REQUEST": "Không thể xử lý yêu cầu"
 }

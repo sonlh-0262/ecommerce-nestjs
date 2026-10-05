@@ -11,5 +11,9 @@
   "MIN_LENGTH": "{property} phải có ít nhất {constraints.0} ký tự",
   "ARRAY_MAX_SIZE": "{property} không được chứa quá {constraints.0} phần tử",
   "MIN": "{property} không được nhỏ hơn {constraints.0}",
-  "MAX": "{property} không được lớn hơn {constraints.0}"
+  "MAX": "{property} không được lớn hơn {constraints.0}",
+  "LENGTH": "{property} phải có từ {constraints.0} đến {constraints.1} ký tự",
+  "USERNAME_CHARACTERS": "{property} chỉ được chứa chữ cái, chữ số và dấu gạch dưới",
+  "PASSWORD_STRENGTH": "{property} phải có ít nhất một chữ thường, một chữ hoa và một chữ số",
+  "TOKEN_FORMAT": "{property} không phải token hợp lệ"
 }

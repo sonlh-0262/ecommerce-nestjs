@@ -15,12 +15,14 @@ import {
 } from '../../src/config/database.config';
 import { REDIS_CONFIG_KEY, RedisConfig } from '../../src/config/redis.config';
 import { setupSwagger } from '../../src/config/swagger';
+import { MailQueueService } from '../../src/mail/mail-queue.service';
 import { REDIS_CLIENT } from '../../src/redis/redis.constants';
 import { User } from '../../src/users/entities/user.entity';
 import { PasswordService } from '../../src/users/password.service';
 import { UserFactory } from './factories/user.factory';
 import { TestAppOptions } from './interfaces/test-app-options.interface';
 import { TestContext } from './interfaces/test-context.interface';
+import { MailRecorder } from './mail-recorder';
 import { assertTestDatabase, clearDatabase } from './test-database';
 import { assertTestRedis, clearRedis } from './test-redis';
 
@@ -34,9 +36,13 @@ import { assertTestRedis, clearRedis } from './test-redis';
 export async function createTestApp(
   options: TestAppOptions = {},
 ): Promise<TestContext> {
+  const mail = new MailRecorder();
   const moduleFixture = await Test.createTestingModule({
     imports: [AppModule],
-  }).compile();
+  })
+    .overrideProvider(MailQueueService)
+    .useValue(mail)
+    .compile();
 
   const app = moduleFixture.createNestApplication<INestApplication<App>>();
   const config = app.get(ConfigService);
@@ -71,10 +77,12 @@ export async function createTestApp(
       app.get(PasswordService),
       app.get(AuthService),
     ),
+    mail,
     server: () => app.getHttpServer(),
     reset: async () => {
       await clearDatabase(dataSource);
       await clearRedis(redis, redisConfig);
+      mail.clear();
     },
     close: () => app.close(),
   };

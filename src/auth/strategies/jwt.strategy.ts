@@ -5,12 +5,12 @@ import { I18nService } from 'nestjs-i18n';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 
 import { AuthConfig, AUTH_CONFIG_KEY } from '../../config/auth.config';
-import { User } from '../../users/entities/user.entity';
 import { UsersService } from '../../users/users.service';
 import { assertAccountActive } from '../account-status';
-import { JWT_STRATEGY_NAME, MILLISECONDS_PER_SECOND } from '../auth.constants';
+import { JWT_STRATEGY_NAME } from '../auth.constants';
 import { AuthenticatedUser } from '../interfaces/authenticated-user.interface';
 import { JwtPayload } from '../interfaces/jwt-payload.interface';
+import { passwordVersion } from '../password-version';
 import { TokenBlacklistService } from '../token-blacklist.service';
 
 @Injectable()
@@ -49,7 +49,7 @@ export class JwtStrategy extends PassportStrategy(Strategy, JWT_STRATEGY_NAME) {
       throw new UnauthorizedException(this.i18n.t('auth.USER_NOT_FOUND'));
     }
 
-    if (isIssuedBeforePasswordChange(payload, user)) {
+    if ((payload.pwv ?? null) !== passwordVersion(user)) {
       throw new UnauthorizedException(this.i18n.t('auth.PASSWORD_CHANGED'));
     }
 
@@ -57,23 +57,4 @@ export class JwtStrategy extends PassportStrategy(Strategy, JWT_STRATEGY_NAME) {
 
     return { user, jti: payload.jti, expiresAt: payload.exp };
   }
-}
-
-/**
- * Whether a password change has outlived the token presented.
- *
- * Changing a password revokes every session at once, which the denylist cannot
- * express: the ids of the tokens still in the wild are unknown.
- */
-function isIssuedBeforePasswordChange(
-  payload: JwtPayload,
-  user: User,
-): boolean {
-  if (!user.passwordChangedAt) {
-    return false;
-  }
-
-  return (
-    payload.iat * MILLISECONDS_PER_SECOND < user.passwordChangedAt.getTime()
-  );
 }

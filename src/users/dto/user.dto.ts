@@ -69,3 +69,12 @@ export function toUserDto(user: User): UserDto {
     createdAt: user.createdAt.toISOString(),
   };
 }
+
+export class UserResponseDto {
+  @ApiProperty({ type: UserDto })
+  user: UserDto;
+}
+
+export function toUserResponse(user: User): UserResponseDto {
+  return { user: toUserDto(user) };
+}

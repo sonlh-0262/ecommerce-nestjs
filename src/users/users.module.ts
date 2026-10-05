@@ -3,11 +3,12 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { User } from './entities/user.entity';
 import { PasswordService } from './password.service';
+import { UserTokensService } from './user-tokens.service';
 import { UsersService } from './users.service';
 
 @Module({
   imports: [TypeOrmModule.forFeature([User])],
-  providers: [UsersService, PasswordService],
-  exports: [UsersService, PasswordService],
+  providers: [UsersService, PasswordService, UserTokensService],
+  exports: [UsersService, PasswordService, UserTokensService],
 })
 export class UsersModule {}

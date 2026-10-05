@@ -12,3 +12,7 @@ export const MIGRATIONS_TABLE_NAME = 'migrations';
 
 /** Postgres extension providing `gen_random_uuid()` for uuid primary keys. */
 export const UUID_EXTENSION = 'pgcrypto';
+
+export const PG_UNIQUE_VIOLATION = '23505';
+export const PG_FOREIGN_KEY_VIOLATION = '23503';
+export const PG_CHECK_VIOLATION = '23514';

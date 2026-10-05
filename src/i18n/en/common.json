@@ -1,3 +1,11 @@
 {
-  "health_ok": "Service is healthy"
+  "health_ok": "Service is healthy",
+  "DUPLICATE_RESOURCE": "This record already exists",
+  "RELATED_RESOURCE_MISSING": "A related record does not exist",
+  "CONSTRAINT_VIOLATED": "The data violates a constraint",
+  "INTERNAL_ERROR": "Something went wrong, please try again later",
+  "TOO_MANY_REQUESTS": "Too many requests, please try again later",
+  "MALFORMED_REQUEST": "The request body could not be read",
+  "PAYLOAD_TOO_LARGE": "The request body is too large",
+  "INVALID_REQUEST": "The request could not be processed"
 }

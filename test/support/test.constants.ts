@@ -29,3 +29,13 @@ export const API_BASE_PATH = '/api/v1';
 export const HEALTH_PATH = '/health';
 
 export const SWAGGER_PATH = '/docs';
+
+export const AUTH_PATHS = {
+  register: `${API_BASE_PATH}/auth/register`,
+  verifyEmail: `${API_BASE_PATH}/auth/verify-email`,
+  resendVerification: `${API_BASE_PATH}/auth/resend-verification`,
+  login: `${API_BASE_PATH}/auth/login`,
+  logout: `${API_BASE_PATH}/auth/logout`,
+  forgotPassword: `${API_BASE_PATH}/auth/forgot-password`,
+  resetPassword: `${API_BASE_PATH}/auth/reset-password`,
+} as const;

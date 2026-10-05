@@ -3,6 +3,7 @@ import { App } from 'supertest/types';
 import { DataSource } from 'typeorm';
 
 import { UserFactory } from '../factories/user.factory';
+import { MailRecorder } from '../mail-recorder';
 
 /** Everything a spec needs from a booted application. */
 export interface TestContext {
@@ -10,6 +11,7 @@ export interface TestContext {
   dataSource: DataSource;
   /** Seeds accounts without going through the API. */
   users: UserFactory;
+  mail: MailRecorder;
   /** HTTP server to hand to `supertest`. */
   server: () => App;
   /** Empties every store the suite owns; call between cases. */

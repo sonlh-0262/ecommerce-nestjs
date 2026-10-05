@@ -190,11 +190,20 @@ describe('AuthService', () => {
         sub: seeded.id,
         email: seeded.email,
         username: seeded.username,
+        pwv: null,
       });
       // A `jti` per token is what makes one session revocable on its own; a
       // uuid is 36 characters.
       expect(options.jwtid).toHaveLength(36);
     });
+  });
+
+  it('stamps the token with the current password version', () => {
+    const changedAt = new Date('2026-10-05T00:00:00.500Z');
+
+    authService.issueSession(buildUser({ passwordChangedAt: changedAt }));
+
+    expect(signCalls()[0][0].pwv).toBe(changedAt.getTime());
   });
 
   describe('logout', () => {

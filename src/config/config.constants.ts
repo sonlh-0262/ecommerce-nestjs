@@ -44,3 +44,16 @@ export const MAX_BCRYPT_SALT_ROUNDS = 31;
  * to crack, so production is held to the current accepted minimum.
  */
 export const MIN_PRODUCTION_BCRYPT_SALT_ROUNDS = 10;
+
+export const DEFAULT_THROTTLE_TTL_SECONDS = 60;
+export const DEFAULT_THROTTLE_LIMIT = 100;
+export const MIN_THROTTLE_VALUE = 1;
+
+export const DEFAULT_MAIL_HOST = 'localhost';
+export const DEFAULT_MAIL_PORT = 1025;
+export const DEFAULT_MAIL_FROM = 'no-reply@ecommerce.local';
+export const DEFAULT_MAIL_FROM_NAME = 'Ecommerce';
+
+export const DEFAULT_APP_WEB_URL = 'http://localhost:3000';
+export const WEB_URL_SCHEMES = ['http', 'https'];
+export const NO_TRAILING_SLASH_PATTERN = /[^/]$/;

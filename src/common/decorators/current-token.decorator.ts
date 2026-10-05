@@ -16,10 +16,8 @@ export const CurrentToken = createParamDecorator(
       .getRequest<{ user?: AuthenticatedUser }>();
 
     if (!user) {
-      // Only reachable if a route uses this decorator without a guard, so the
-      // message is for the developer who wired it, not for a client.
       throw new Error(
-        'No authenticated user on the request. Add JwtAuthGuard to this route.',
+        'No authenticated user on the request. Remove @Public() from this route.',
       );
     }
 

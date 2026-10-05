@@ -41,3 +41,5 @@ export const USER_TOKENS_UNUSED_CONDITION = 'used_at IS NULL';
 export const USER_TOKENS_EXPIRY_CHECK = 'CHK_user_tokens_expiry';
 
 export const USER_TOKENS_EXPIRY_EXPRESSION = 'expires_at > created_at';
+
+export const UNIQUE_USERS_EMAIL_INDEX = 'UQ_users_email';

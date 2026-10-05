@@ -1,13 +1,30 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import {
+  ExecutionContext,
+  Injectable,
+  UnauthorizedException,
+} from '@nestjs/common';
+import { Reflector } from '@nestjs/core';
 import { AuthGuard } from '@nestjs/passport';
 import { I18nService } from 'nestjs-i18n';
 
+import { IS_PUBLIC_KEY } from '../../common/decorators/public.decorator';
 import { JWT_STRATEGY_NAME } from '../auth.constants';
 
 @Injectable()
 export class JwtAuthGuard extends AuthGuard(JWT_STRATEGY_NAME) {
-  constructor(private readonly i18n: I18nService) {
+  constructor(
+    private readonly reflector: Reflector,
+    private readonly i18n: I18nService,
+  ) {
     super();
+  }
+
+  canActivate(context: ExecutionContext) {
+    if (this.isPublic(context)) {
+      return true;
+    }
+
+    return super.canActivate(context);
   }
 
   /**
@@ -32,5 +49,14 @@ export class JwtAuthGuard extends AuthGuard(JWT_STRATEGY_NAME) {
     }
 
     return user;
+  }
+
+  private isPublic(context: ExecutionContext): boolean {
+    return (
+      this.reflector.getAllAndOverride<boolean | undefined>(IS_PUBLIC_KEY, [
+        context.getHandler(),
+        context.getClass(),
+      ]) === true
+    );
   }
 }

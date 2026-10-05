@@ -1,4 +1,10 @@
+import { minutes } from '@nestjs/throttler';
+
+import { trackByIpAndEmail } from '../common/throttling/ip-and-email.tracker';
+import { RouteRateLimit } from '../common/throttling/rate-limit.decorator';
+import { MAIL_JOB, MailJobName } from '../mail/mail.constants';
 import { UserStatus } from '../users/enums/user-status.enum';
+import { UserTokenType } from '../users/enums/user-token-type.enum';
 
 /**
  * Constants owned by the auth module.
@@ -49,3 +55,30 @@ export const ACCOUNT_STATUS_REJECTIONS: Record<UserStatus, string | undefined> =
     [UserStatus.Inactive]: 'auth.ACCOUNT_INACTIVE',
     [UserStatus.Active]: undefined,
   };
+
+export const ACCOUNT_LINKS: Record<
+  UserTokenType,
+  { job: MailJobName; path: string }
+> = {
+  [UserTokenType.EmailVerify]: {
+    job: MAIL_JOB.VerifyEmail,
+    path: '/verify-email',
+  },
+  [UserTokenType.ResetPassword]: {
+    job: MAIL_JOB.ResetPassword,
+    path: '/reset-password',
+  },
+};
+
+export const AUTH_RATE_LIMITS = {
+  login: { limit: 5, ttl: minutes(5), getTracker: trackByIpAndEmail },
+  register: { limit: 5, ttl: minutes(10) },
+  verifyEmail: { limit: 10, ttl: minutes(10) },
+  resendVerification: {
+    limit: 3,
+    ttl: minutes(15),
+    getTracker: trackByIpAndEmail,
+  },
+  forgotPassword: { limit: 3, ttl: minutes(15), getTracker: trackByIpAndEmail },
+  resetPassword: { limit: 5, ttl: minutes(15) },
+} satisfies Record<string, RouteRateLimit>;

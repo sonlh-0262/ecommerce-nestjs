@@ -1,31 +1,17 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { Transform, Type } from 'class-transformer';
+import { Type } from 'class-transformer';
 import {
-  IsEmail,
   IsNotEmpty,
   IsObject,
   IsString,
-  MaxLength,
   ValidateNested,
 } from 'class-validator';
 import { i18nValidationMessage } from 'nestjs-i18n';
 
-import { trimLower } from '../../common/transforms/trim';
-import { EMAIL_MAX_LENGTH } from '../../users/users.constants';
+import { EmailField } from '../../users/dto/user-fields.decorator';
 
 export class LoginUserBodyDto {
-  @ApiProperty({
-    example: 'son@example.com',
-    format: 'email',
-    maxLength: EMAIL_MAX_LENGTH,
-  })
-  @IsEmail({}, { message: i18nValidationMessage('validation.IS_EMAIL') })
-  // The column is this wide, so anything longer could never have registered -
-  // and the limit the Swagger schema advertises has to be enforced somewhere.
-  @MaxLength(EMAIL_MAX_LENGTH, {
-    message: i18nValidationMessage('validation.MAX_LENGTH'),
-  })
-  @Transform(trimLower)
+  @EmailField()
   email: string;
 
   /**

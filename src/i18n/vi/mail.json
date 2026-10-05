@@ -1,0 +1,18 @@
+{
+  "GREETING": "Xin chào {name},",
+  "FALLBACK_LINK": "Nếu nút không hoạt động, hãy sao chép địa chỉ sau vào trình duyệt:",
+  "IGNORE_IF_NOT_YOU": "Nếu bạn không thực hiện yêu cầu này, hãy bỏ qua email.",
+  "FOOTER": "Đây là email tự động, vui lòng không trả lời.",
+  "VERIFY_EMAIL": {
+    "SUBJECT": "Xác nhận địa chỉ email của bạn",
+    "INTRO": "Cảm ơn bạn đã đăng ký. Vui lòng xác nhận địa chỉ email để kích hoạt tài khoản.",
+    "ACTION": "Xác nhận email",
+    "EXPIRY": "Liên kết có hiệu lực trong {duration}."
+  },
+  "RESET_PASSWORD": {
+    "SUBJECT": "Đặt lại mật khẩu",
+    "INTRO": "Chúng tôi nhận được yêu cầu đặt lại mật khẩu cho tài khoản của bạn.",
+    "ACTION": "Đặt lại mật khẩu",
+    "EXPIRY": "Liên kết có hiệu lực trong {duration} và chỉ dùng được một lần."
+  }
+}

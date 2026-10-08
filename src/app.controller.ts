@@ -1,4 +1,5 @@
 import { Controller, Get, Query } from '@nestjs/common';
+import { SkipThrottle } from '@nestjs/throttler';
 import {
   ApiBadRequestResponse,
   ApiOkResponse,
@@ -9,6 +10,7 @@ import { I18nLang } from 'nestjs-i18n';
 
 import { AppService } from './app.service';
 import { HEALTH_ROUTE } from './common/constants/routes';
+import { Public } from './common/decorators/public.decorator';
 import { LangQueryDto } from './common/dto/lang-query.dto';
 import { HealthResponseDto } from './dto/health-response.dto';
 
@@ -28,6 +30,8 @@ export class AppController {
    * OpenAPI document for this route.
    */
   @Get(HEALTH_ROUTE)
+  @Public()
+  @SkipThrottle()
   @ApiOperation({
     summary: 'Health check',
     description: 'Liveness probe. The message is localised.',

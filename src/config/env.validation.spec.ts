@@ -6,6 +6,14 @@ import { Environment, envValidationSchema } from './env.validation';
 
 describe('envValidationSchema', () => {
   const STRONG_SECRET = 'x'.repeat(MIN_JWT_SECRET_LENGTH);
+  const PRODUCTION: Record<string, string> = {
+    NODE_ENV: Environment.Production,
+    JWT_SECRET: STRONG_SECRET,
+    MAIL_HOST: 'smtp.example.com',
+    MAIL_PORT: '587',
+    MAIL_FROM: 'no-reply@example.com',
+    APP_WEB_URL: 'https://shop.example.com',
+  };
 
   const validate = (env: Record<string, string>) =>
     envValidationSchema.validate(env, { abortEarly: false });
@@ -47,19 +55,14 @@ describe('envValidationSchema', () => {
     });
 
     it('refuses a cheap cost factor in production', () => {
-      const { error } = validate({
-        NODE_ENV: Environment.Production,
-        JWT_SECRET: STRONG_SECRET,
-        BCRYPT_SALT_ROUNDS: '4',
-      });
+      const { error } = validate({ ...PRODUCTION, BCRYPT_SALT_ROUNDS: '4' });
 
       expect(error?.message).toContain('BCRYPT_SALT_ROUNDS');
     });
 
     it('accepts the production floor', () => {
       const { error } = validate({
-        NODE_ENV: Environment.Production,
-        JWT_SECRET: STRONG_SECRET,
+        ...PRODUCTION,
         BCRYPT_SALT_ROUNDS: String(MIN_PRODUCTION_BCRYPT_SALT_ROUNDS),
       });
 
@@ -77,6 +80,47 @@ describe('envValidationSchema', () => {
       const { error } = validate({ FALLBACK_LANGUAGE: 'jp' });
 
       expect(error?.message).toContain('FALLBACK_LANGUAGE');
+    });
+  });
+
+  describe('mail and links', () => {
+    it.each(['MAIL_HOST', 'MAIL_PORT', 'MAIL_FROM', 'APP_WEB_URL'])(
+      'requires %s in production',
+      (key) => {
+        const { [key]: _omitted, ...withoutKey } = PRODUCTION;
+
+        expect(validate(withoutKey).error?.message).toContain(key);
+      },
+    );
+
+    it('accepts a complete production mail setup', () => {
+      expect(validate(PRODUCTION).error).toBeUndefined();
+    });
+
+    it('accepts a sender on a development-only domain', () => {
+      expect(
+        validate({ MAIL_FROM: 'no-reply@ecommerce.local' }).error,
+      ).toBeUndefined();
+    });
+
+    it('rejects a sender that is not an email address', () => {
+      expect(validate({ MAIL_FROM: 'nobody' }).error?.message).toContain(
+        'MAIL_FROM',
+      );
+    });
+
+    it('rejects a web URL with a trailing slash', () => {
+      const { error } = validate({ APP_WEB_URL: 'https://shop.example.com/' });
+
+      expect(error?.message).toContain('APP_WEB_URL');
+    });
+  });
+
+  describe('THROTTLE_LIMIT', () => {
+    it('rejects a limit that would block every request', () => {
+      expect(validate({ THROTTLE_LIMIT: '0' }).error?.message).toContain(
+        'THROTTLE_LIMIT',
+      );
     });
   });
 

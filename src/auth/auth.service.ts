@@ -15,6 +15,7 @@ import {
   JwtPayload,
   JwtPayloadClaims,
 } from './interfaces/jwt-payload.interface';
+import { passwordVersion } from './password-version';
 import { TokenBlacklistService } from './token-blacklist.service';
 
 @Injectable()
@@ -76,6 +77,7 @@ export class AuthService {
       sub: user.id,
       email: user.email,
       username: user.username,
+      pwv: passwordVersion(user),
     };
 
     const token = this.jwtService.sign(claims, { jwtid: randomUUID() });

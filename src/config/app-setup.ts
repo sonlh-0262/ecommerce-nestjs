@@ -1,7 +1,13 @@
 import { INestApplication, RequestMethod } from '@nestjs/common';
-import { I18nValidationExceptionFilter, I18nValidationPipe } from 'nestjs-i18n';
+import {
+  I18nService,
+  I18nValidationExceptionFilter,
+  I18nValidationPipe,
+} from 'nestjs-i18n';
 
 import { HEALTH_ROUTE } from '../common/constants/routes';
+import { toErrorResponse } from '../common/dto/error-response.dto';
+import { AllExceptionsFilter } from '../common/filters/all-exceptions.filter';
 import { AppConfig } from './configuration';
 
 /**
@@ -37,7 +43,13 @@ export function configureApp(
   );
 
   app.useGlobalFilters(
-    new I18nValidationExceptionFilter({ detailedErrors: false }),
+    new AllExceptionsFilter(app.get(I18nService)),
+    new I18nValidationExceptionFilter({
+      detailedErrors: false,
+      responseBodyFormatter: (_host, _exception, formattedErrors) => ({
+        ...toErrorResponse(formattedErrors as string[]),
+      }),
+    }),
   );
 
   return app;

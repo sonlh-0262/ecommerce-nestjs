@@ -11,5 +11,9 @@
   "MIN_LENGTH": "{property} must be longer than or equal to {constraints.0} characters",
   "ARRAY_MAX_SIZE": "{property} must contain no more than {constraints.0} items",
   "MIN": "{property} must not be less than {constraints.0}",
-  "MAX": "{property} must not be greater than {constraints.0}"
+  "MAX": "{property} must not be greater than {constraints.0}",
+  "LENGTH": "{property} must be between {constraints.0} and {constraints.1} characters",
+  "USERNAME_CHARACTERS": "{property} may only contain letters, digits and underscores",
+  "PASSWORD_STRENGTH": "{property} must contain a lower case letter, an upper case letter and a digit",
+  "TOKEN_FORMAT": "{property} is not a valid token"
 }

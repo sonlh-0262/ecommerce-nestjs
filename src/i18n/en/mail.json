@@ -1,0 +1,18 @@
+{
+  "GREETING": "Hello {name},",
+  "FALLBACK_LINK": "If the button does not work, copy this address into your browser:",
+  "IGNORE_IF_NOT_YOU": "If you did not make this request, you can safely ignore this email.",
+  "FOOTER": "This is an automated message, please do not reply.",
+  "VERIFY_EMAIL": {
+    "SUBJECT": "Confirm your email address",
+    "INTRO": "Thanks for signing up. Please confirm your email address to activate your account.",
+    "ACTION": "Confirm email",
+    "EXPIRY": "This link expires in {duration}."
+  },
+  "RESET_PASSWORD": {
+    "SUBJECT": "Reset your password",
+    "INTRO": "We received a request to reset the password of your account.",
+    "ACTION": "Reset password",
+    "EXPIRY": "This link expires in {duration} and can be used once."
+  }
+}

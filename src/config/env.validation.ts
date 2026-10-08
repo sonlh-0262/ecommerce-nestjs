@@ -11,6 +11,9 @@ import {
   MIN_PORT,
   MIN_PRODUCTION_BCRYPT_SALT_ROUNDS,
   MIN_REDIS_DB_INDEX,
+  MIN_THROTTLE_VALUE,
+  NO_TRAILING_SLASH_PATTERN,
+  WEB_URL_SCHEMES,
 } from './config.constants';
 
 export enum Environment {
@@ -47,7 +50,27 @@ export interface EnvironmentVariables {
   JWT_EXPIRES_IN?: string;
   JWT_ISSUER?: string;
   BCRYPT_SALT_ROUNDS?: number;
+
+  THROTTLE_TTL?: number;
+  THROTTLE_LIMIT?: number;
+
+  MAIL_HOST?: string;
+  MAIL_PORT?: number;
+  MAIL_USER?: string;
+  MAIL_PASSWORD?: string;
+  MAIL_FROM?: string;
+  MAIL_FROM_NAME?: string;
+  APP_WEB_URL?: string;
 }
+
+const requiredInProduction = <T extends Joi.Schema>(schema: T): T =>
+  schema.when('NODE_ENV', {
+    is: Environment.Production,
+    then: Joi.required(),
+    otherwise: Joi.optional(),
+  }) as T;
+
+const EMAIL_OPTIONS: Joi.EmailOptions = { tlds: { allow: false } };
 
 export const envValidationSchema = Joi.object<EnvironmentVariables>({
   NODE_ENV: Joi.string()
@@ -80,11 +103,7 @@ export const envValidationSchema = Joi.object<EnvironmentVariables>({
     .optional(),
   REDIS_KEY_PREFIX: Joi.string().optional(),
 
-  JWT_SECRET: Joi.string().min(MIN_JWT_SECRET_LENGTH).when('NODE_ENV', {
-    is: Environment.Production,
-    then: Joi.required(),
-    otherwise: Joi.optional(),
-  }),
+  JWT_SECRET: requiredInProduction(Joi.string().min(MIN_JWT_SECRET_LENGTH)),
   JWT_EXPIRES_IN: Joi.string().pattern(JWT_DURATION_PATTERN).optional(),
   JWT_ISSUER: Joi.string().min(1).optional(),
   BCRYPT_SALT_ROUNDS: Joi.number()
@@ -95,4 +114,19 @@ export const envValidationSchema = Joi.object<EnvironmentVariables>({
       then: Joi.number().min(MIN_PRODUCTION_BCRYPT_SALT_ROUNDS),
     })
     .optional(),
+
+  THROTTLE_TTL: Joi.number().integer().min(MIN_THROTTLE_VALUE).optional(),
+  THROTTLE_LIMIT: Joi.number().integer().min(MIN_THROTTLE_VALUE).optional(),
+
+  MAIL_HOST: requiredInProduction(Joi.string().min(1)),
+  MAIL_PORT: requiredInProduction(Joi.number().min(MIN_PORT).max(MAX_PORT)),
+  MAIL_USER: Joi.string().allow('').optional(),
+  MAIL_PASSWORD: Joi.string().allow('').optional(),
+  MAIL_FROM: requiredInProduction(Joi.string().email(EMAIL_OPTIONS)),
+  MAIL_FROM_NAME: Joi.string().min(1).optional(),
+  APP_WEB_URL: requiredInProduction(
+    Joi.string()
+      .uri({ scheme: WEB_URL_SCHEMES })
+      .pattern(NO_TRAILING_SLASH_PATTERN),
+  ),
 }).unknown(true);

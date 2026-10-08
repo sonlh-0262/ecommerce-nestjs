@@ -1,17 +1,14 @@
 import request from 'supertest';
 
-import { MILLISECONDS_PER_SECOND } from '../src/auth/auth.constants';
 import { AuthenticatedUserResponseDto } from '../src/auth/dto/authenticated-user.dto';
-import { LogoutResponseDto } from '../src/auth/dto/logout-response.dto';
+import { MessageResponseDto } from '../src/common/dto/message-response.dto';
 import { User } from '../src/users/entities/user.entity';
 import { UserStatus } from '../src/users/enums/user-status.enum';
+import { errorMessages, loginRequest } from './support/http';
 import { SeededUser } from './support/interfaces/seeded-user.interface';
 import { TestContext } from './support/interfaces/test-context.interface';
 import { createTestApp } from './support/test-app';
-import { API_BASE_PATH, SEEDED_USER_PASSWORD } from './support/test.constants';
-
-const LOGIN_PATH = `${API_BASE_PATH}/auth/login`;
-const LOGOUT_PATH = `${API_BASE_PATH}/auth/logout`;
+import { AUTH_PATHS, SEEDED_USER_PASSWORD } from './support/test.constants';
 
 /** Both arms of a failed login have to answer with exactly this. */
 const EN_INVALID_CREDENTIALS = 'Email or password is incorrect';
@@ -32,9 +29,7 @@ describe('Auth (e2e)', () => {
   });
 
   const login = (email: string, password: string, query = '') =>
-    request(ctx.server())
-      .post(`${LOGIN_PATH}${query}`)
-      .send({ user: { email, password } });
+    loginRequest(ctx.server(), email, password, query);
 
   const loginAs = (user: User, query = '') =>
     login(user.email, SEEDED_USER_PASSWORD, query);
@@ -87,9 +82,7 @@ describe('Auth (e2e)', () => {
 
       const response = await login(user.email, 'WrongPassword@1').expect(401);
 
-      expect((response.body as { message: string }).message).toBe(
-        EN_INVALID_CREDENTIALS,
-      );
+      expect(errorMessages(response.body)).toEqual([EN_INVALID_CREDENTIALS]);
     });
 
     it('rejects an unknown email with the very same 401', async () => {
@@ -100,9 +93,7 @@ describe('Auth (e2e)', () => {
         SEEDED_USER_PASSWORD,
       ).expect(401);
 
-      expect((response.body as { message: string }).message).toBe(
-        EN_INVALID_CREDENTIALS,
-      );
+      expect(errorMessages(response.body)).toEqual([EN_INVALID_CREDENTIALS]);
     });
 
     it('rejects an account that has not been activated with 403', async () => {
@@ -140,15 +131,15 @@ describe('Auth (e2e)', () => {
         '?lang=vi',
       ).expect(401);
 
-      expect((response.body as { message: string }).message).toBe(
+      expect(errorMessages(response.body)).toEqual([
         'Email hoặc mật khẩu không đúng',
-      );
+      ]);
     });
 
     describe('validation', () => {
       it('rejects a body without the user envelope', async () => {
         await request(ctx.server())
-          .post(LOGIN_PATH)
+          .post(AUTH_PATHS.login)
           .send({ email: 'son@example.com', password: SEEDED_USER_PASSWORD })
           .expect(400);
       });
@@ -163,7 +154,7 @@ describe('Auth (e2e)', () => {
 
       it('rejects an unknown field inside the envelope', async () => {
         await request(ctx.server())
-          .post(LOGIN_PATH)
+          .post(AUTH_PATHS.login)
           .send({
             user: {
               email: 'son@example.com',
@@ -188,7 +179,7 @@ describe('Auth (e2e)', () => {
 
   describe('POST /auth/logout', () => {
     const logout = (token?: string) => {
-      const pending = request(ctx.server()).post(LOGOUT_PATH);
+      const pending = request(ctx.server()).post(AUTH_PATHS.logout);
 
       return token ? pending.set('Authorization', `Bearer ${token}`) : pending;
     };
@@ -202,7 +193,7 @@ describe('Auth (e2e)', () => {
     it('revokes the token it was called with', async () => {
       const response = await logout(seeded.session.token).expect(200);
 
-      expect((response.body as LogoutResponseDto).message).toBe(
+      expect((response.body as MessageResponseDto).message).toBe(
         'You have been logged out',
       );
     });
@@ -244,16 +235,9 @@ describe('Auth (e2e)', () => {
     it('rejects a token issued before the password changed', async () => {
       // One write revokes every live session, which the denylist cannot do:
       // the ids of tokens already in the wild are unknown.
-      //
-      // A second ahead of now, because `iat` is only accurate to the second:
-      // a change stamped within the same second as the token was issued is
-      // not yet "after" it.
       await ctx.dataSource
         .getRepository(User)
-        .update(
-          { id: seeded.user.id },
-          { passwordChangedAt: new Date(Date.now() + MILLISECONDS_PER_SECOND) },
-        );
+        .update({ id: seeded.user.id }, { passwordChangedAt: new Date() });
 
       await logout(seeded.session.token).expect(401);
     });

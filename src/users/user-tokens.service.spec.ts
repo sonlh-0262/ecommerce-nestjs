@@ -135,6 +135,22 @@ describe('UserTokensService', () => {
     });
   });
 
+  describe('retire', () => {
+    it('marks every live token of the type used', async () => {
+      await service.retire(manager, USER_ID, UserTokenType.ResetPassword);
+
+      expect(managerMock.update).toHaveBeenCalledWith(
+        UserToken,
+        {
+          userId: USER_ID,
+          type: UserTokenType.ResetPassword,
+          usedAt: IsNull(),
+        },
+        { usedAt: expect.any(Function) as unknown },
+      );
+    });
+  });
+
   describe('consume', () => {
     const TOKEN = 'a'.repeat(64);
 

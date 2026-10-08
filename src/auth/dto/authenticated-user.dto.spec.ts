@@ -26,6 +26,16 @@ describe('toAuthenticatedUserResponse', () => {
     expect(user.emailVerifiedAt).toBeNull();
   });
 
+  it('carries the avatar url it is given', () => {
+    const { user } = toAuthenticatedUserResponse(
+      buildUser(),
+      session,
+      '/api/v1/attachments/a1',
+    );
+
+    expect(user.avatarUrl).toBe('/api/v1/attachments/a1');
+  });
+
   it('carries the session alongside the account', () => {
     const { user } = toAuthenticatedUserResponse(buildUser(), session);
 

@@ -124,6 +124,14 @@ describe('envValidationSchema', () => {
     });
   });
 
+  describe('STORAGE_ROOT', () => {
+    it('rejects an empty storage root', () => {
+      expect(validate({ STORAGE_ROOT: '' }).error?.message).toContain(
+        'STORAGE_ROOT',
+      );
+    });
+  });
+
   describe('REDIS_DB', () => {
     it('rejects an index outside the 16 Redis provides', () => {
       const { error } = validate({ REDIS_DB: '16' });

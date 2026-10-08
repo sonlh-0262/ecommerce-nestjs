@@ -44,8 +44,8 @@ ENV NODE_ENV=production
 COPY --from=build --chown=node:node /usr/src/app/node_modules ./node_modules
 COPY --from=build --chown=node:node /usr/src/app/dist ./dist
 COPY --chown=node:node package.json ./
-RUN mkdir -p /usr/src/app/uploads && chown node:node /usr/src/app/uploads
-VOLUME ["/usr/src/app/uploads"]
+RUN mkdir -p /usr/src/app/storage && chown node:node /usr/src/app/storage
+VOLUME ["/usr/src/app/storage"]
 USER node
 EXPOSE 3000
 ENTRYPOINT ["dumb-init", "--"]

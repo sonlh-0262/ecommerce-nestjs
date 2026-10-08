@@ -57,3 +57,5 @@ export const DEFAULT_MAIL_FROM_NAME = 'Ecommerce';
 export const DEFAULT_APP_WEB_URL = 'http://localhost:3000';
 export const WEB_URL_SCHEMES = ['http', 'https'];
 export const NO_TRAILING_SLASH_PATTERN = /[^/]$/;
+
+export const DEFAULT_STORAGE_ROOT = './storage';

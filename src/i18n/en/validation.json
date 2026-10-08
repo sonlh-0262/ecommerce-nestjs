@@ -15,5 +15,9 @@
   "LENGTH": "{property} must be between {constraints.0} and {constraints.1} characters",
   "USERNAME_CHARACTERS": "{property} may only contain letters, digits and underscores",
   "PASSWORD_STRENGTH": "{property} must contain a lower case letter, an upper case letter and a digit",
-  "TOKEN_FORMAT": "{property} is not a valid token"
+  "TOKEN_FORMAT": "{property} is not a valid token",
+  "IS_UUID": "{property} must be a UUID",
+  "PHONE_FORMAT": "{property} may only contain digits, spaces and + - ( )",
+  "AT_LEAST_ONE_FIELD": "{property} must contain at least one field",
+  "IS_IN": "{property} must be one of: {constraints.0}"
 }

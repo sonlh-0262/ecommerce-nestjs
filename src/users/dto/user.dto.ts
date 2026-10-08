@@ -52,7 +52,10 @@ export class UserDto {
   createdAt: string;
 }
 
-export function toUserDto(user: User): UserDto {
+export function toUserDto(
+  user: User,
+  avatarUrl: string | null = null,
+): UserDto {
   return {
     id: user.id,
     email: user.email,
@@ -60,9 +63,7 @@ export function toUserDto(user: User): UserDto {
     fullName: user.fullName,
     phone: user.phone,
     address: user.address,
-    // Avatars are rows in the polymorphic `attachments` table, which arrives
-    // with the product and profile modules. Until then no account has one.
-    avatarUrl: null,
+    avatarUrl,
     role: user.role,
     status: user.status,
     emailVerifiedAt: user.emailVerifiedAt?.toISOString() ?? null,
@@ -75,6 +76,9 @@ export class UserResponseDto {
   user: UserDto;
 }
 
-export function toUserResponse(user: User): UserResponseDto {
-  return { user: toUserDto(user) };
+export function toUserResponse(
+  user: User,
+  avatarUrl: string | null = null,
+): UserResponseDto {
+  return { user: toUserDto(user, avatarUrl) };
 }

@@ -13,6 +13,8 @@ export const TEST_DATABASE_SUFFIX = '_test';
 /** Marker `REDIS_KEY_PREFIX` must contain, for the same reason. */
 export const TEST_REDIS_KEY_PREFIX_MARKER = 'test';
 
+export const TEST_STORAGE_ROOT_LEAF = 'test-storage';
+
 /** Password every fixture account is created with. */
 export const SEEDED_USER_PASSWORD = 'Password@123';
 
@@ -39,3 +41,13 @@ export const AUTH_PATHS = {
   forgotPassword: `${API_BASE_PATH}/auth/forgot-password`,
   resetPassword: `${API_BASE_PATH}/auth/reset-password`,
 } as const;
+
+export const ATTACHMENTS_PATH = `${API_BASE_PATH}/attachments`;
+
+export const PROFILE_PATHS = {
+  me: `${API_BASE_PATH}/users/me`,
+  password: `${API_BASE_PATH}/users/me/password`,
+  avatar: `${API_BASE_PATH}/users/me/avatar`,
+} as const;
+
+export const ADMIN_USERS_PATH = `${API_BASE_PATH}/admin/users`;

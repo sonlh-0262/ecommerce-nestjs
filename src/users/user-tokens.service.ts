@@ -7,6 +7,7 @@ import { MILLISECONDS_PER_MINUTE } from '../common/constants/time';
 import { UserToken } from './entities/user-token.entity';
 import { User } from './entities/user.entity';
 import { UserTokenType } from './enums/user-token-type.enum';
+import { lockUser } from './lock-user';
 import { USER_TOKEN_BYTES, USER_TOKEN_TTL_MINUTES } from './users.constants';
 
 const NOW = () => 'now()';
@@ -20,15 +21,8 @@ export class UserTokensService {
     userId: string,
     type: UserTokenType,
   ): Promise<string> {
-    await manager.findOne(User, {
-      where: { id: userId },
-      lock: { mode: 'pessimistic_write' },
-    });
-    await manager.update(
-      UserToken,
-      { userId, type, usedAt: IsNull() },
-      { usedAt: NOW },
-    );
+    await lockUser(manager, userId);
+    await this.retire(manager, userId, type);
 
     const token = randomBytes(USER_TOKEN_BYTES).toString('hex');
 
@@ -42,6 +36,18 @@ export class UserTokensService {
     });
 
     return token;
+  }
+
+  async retire(
+    manager: EntityManager,
+    userId: string,
+    type: UserTokenType,
+  ): Promise<void> {
+    await manager.update(
+      UserToken,
+      { userId, type, usedAt: IsNull() },
+      { usedAt: NOW },
+    );
   }
 
   async consume(

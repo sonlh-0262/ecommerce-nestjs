@@ -20,7 +20,9 @@ describe('UsersService', () => {
 
   const queryBuilder = {
     where: jest.fn().mockReturnThis(),
+    addSelect: jest.fn().mockReturnThis(),
     getExists: jest.fn(),
+    getOne: jest.fn(),
   };
   const scopedRepository = {
     create: jest.fn((input: Partial<User>) => input),
@@ -89,6 +91,40 @@ describe('UsersService', () => {
     });
   });
 
+  describe('findByIdWithPassword', () => {
+    it('selects the hash the column hides by default', async () => {
+      const user = buildUser();
+      queryBuilder.getOne.mockResolvedValue(user);
+
+      await expect(service.findByIdWithPassword(user.id)).resolves.toBe(user);
+      expect(queryBuilder.addSelect).toHaveBeenCalledWith('user.passwordHash');
+      expect(queryBuilder.where).toHaveBeenCalledWith('user.id = :id', {
+        id: user.id,
+      });
+    });
+  });
+
+  describe('assertUsernameAvailable', () => {
+    it('resolves for a free username', async () => {
+      repositoryMock.existsBy.mockResolvedValue(false);
+
+      await expect(
+        service.assertUsernameAvailable('fresh'),
+      ).resolves.toBeUndefined();
+      expect(repositoryMock.existsBy).toHaveBeenCalledWith({
+        username: 'fresh',
+      });
+    });
+
+    it('rejects a taken username with 409', async () => {
+      repositoryMock.existsBy.mockResolvedValue(true);
+
+      await expect(service.assertUsernameAvailable('sonlh')).rejects.toThrow(
+        new ConflictException('users.USERNAME_TAKEN'),
+      );
+    });
+  });
+
   describe('create', () => {
     const input = {
       email: ' Son@Example.com ',
@@ -150,6 +186,25 @@ describe('UsersService', () => {
         { status: UserStatus.Active },
       );
       expect(updated.status).toBe(UserStatus.Active);
+    });
+
+    it('turns a username race lost on update into 409', async () => {
+      defaultManager.update.mockRejectedValueOnce(
+        uniqueViolation(UNIQUE_USERS_USERNAME_INDEX),
+      );
+
+      await expect(
+        service.update(buildUser(), { username: 'taken' }),
+      ).rejects.toThrow(new ConflictException('users.USERNAME_TAKEN'));
+    });
+
+    it('rethrows any other failure of the update', async () => {
+      const error = new Error('connection lost');
+      defaultManager.update.mockRejectedValueOnce(error);
+
+      await expect(service.update(buildUser(), { fullName: 'x' })).rejects.toBe(
+        error,
+      );
     });
 
     it('skips the query for an empty patch', async () => {

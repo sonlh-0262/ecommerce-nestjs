@@ -29,7 +29,7 @@ export class UserFactory {
     return this.users.save(
       this.users.create({
         email: `user-${sequence}@example.com`,
-        username: `user-${sequence}`,
+        username: `user_${sequence}`,
         passwordHash: await this.passwords.hash(SEEDED_USER_PASSWORD),
         status: UserStatus.Active,
         emailVerifiedAt: new Date(),

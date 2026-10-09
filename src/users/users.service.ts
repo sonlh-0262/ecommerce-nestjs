@@ -48,11 +48,23 @@ export class UsersService {
     return this.queryByEmail(email).addSelect('user.passwordHash').getOne();
   }
 
+  findByIdWithPassword(id: string): Promise<User | null> {
+    return this.usersRepository
+      .createQueryBuilder('user')
+      .addSelect('user.passwordHash')
+      .where('user.id = :id', { id })
+      .getOne();
+  }
+
   async assertAvailable(email: string, username: string): Promise<void> {
     if (await this.queryByEmail(email).getExists()) {
       throw this.conflict(UNIQUE_USERS_EMAIL_INDEX);
     }
 
+    await this.assertUsernameAvailable(username);
+  }
+
+  async assertUsernameAvailable(username: string): Promise<void> {
     if (await this.usersRepository.existsBy({ username })) {
       throw this.conflict(UNIQUE_USERS_USERNAME_INDEX);
     }
@@ -73,11 +85,7 @@ export class UsersService {
         }),
       );
     } catch (error) {
-      const constraint = uniqueViolationConstraint(error);
-
-      throw constraint && USER_UNIQUE_CONFLICTS[constraint]
-        ? this.conflict(constraint)
-        : error;
+      throw this.conflictOr(error);
     }
 
     this.logger.log(`Created user ${user.username} (${user.id})`);
@@ -94,9 +102,21 @@ export class UsersService {
       return user;
     }
 
-    await manager.update(User, { id: user.id }, patch);
+    try {
+      await manager.update(User, { id: user.id }, patch);
+    } catch (error) {
+      throw this.conflictOr(error);
+    }
 
     return Object.assign(user, patch);
+  }
+
+  private conflictOr(error: unknown): unknown {
+    const constraint = uniqueViolationConstraint(error);
+
+    return constraint && USER_UNIQUE_CONFLICTS[constraint]
+      ? this.conflict(constraint)
+      : error;
   }
 
   private conflict(constraint: string): ConflictException {

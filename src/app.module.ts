@@ -15,6 +15,7 @@ import * as path from 'path';
 
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
+import { AttachmentsModule } from './attachments/attachments.module';
 import { AuthModule } from './auth/auth.module';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
 import {
@@ -22,6 +23,7 @@ import {
   LANGUAGE_HEADER,
   LANGUAGE_QUERY_PARAMS,
 } from './common/constants/languages';
+import { RolesGuard } from './common/guards/roles.guard';
 import { AcceptLanguageAliasResolver } from './common/resolvers/accept-language-alias.resolver';
 import authConfig from './config/auth.config';
 import { buildBullOptions } from './config/bull-options';
@@ -37,6 +39,7 @@ import redisConfig, {
   REDIS_CONFIG_KEY,
   RedisConfig,
 } from './config/redis.config';
+import storageConfig from './config/storage.config';
 import throttleConfig, {
   THROTTLE_CONFIG_KEY,
   ThrottleConfig,
@@ -60,6 +63,7 @@ import { UsersModule } from './users/users.module';
         authConfig,
         throttleConfig,
         mailConfig,
+        storageConfig,
       ],
       validationSchema: envValidationSchema,
       validationOptions: { abortEarly: false },
@@ -112,6 +116,7 @@ import { UsersModule } from './users/users.module';
     DatabaseModule,
     RedisModule,
     MailModule,
+    AttachmentsModule,
     UsersModule,
     AuthModule,
   ],
@@ -120,6 +125,7 @@ import { UsersModule } from './users/users.module';
     AppService,
     { provide: APP_GUARD, useClass: ThrottlerGuard },
     { provide: APP_GUARD, useClass: JwtAuthGuard },
+    { provide: APP_GUARD, useClass: RolesGuard },
   ],
 })
 export class AppModule {}

@@ -1,0 +1,7 @@
+{
+  "FILE_REQUIRED": "Please attach a file",
+  "INVALID_FILE_TYPE": "Only JPEG, PNG and WebP images are accepted",
+  "FILE_TOO_LARGE": "The file exceeds the {limit} MB limit",
+  "NOT_FOUND": "File not found",
+  "INVALID_UPLOAD": "Send one image file in the \"file\" field and nothing else"
+}

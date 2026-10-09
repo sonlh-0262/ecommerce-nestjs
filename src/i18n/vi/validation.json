@@ -15,5 +15,9 @@
   "LENGTH": "{property} phải có từ {constraints.0} đến {constraints.1} ký tự",
   "USERNAME_CHARACTERS": "{property} chỉ được chứa chữ cái, chữ số và dấu gạch dưới",
   "PASSWORD_STRENGTH": "{property} phải có ít nhất một chữ thường, một chữ hoa và một chữ số",
-  "TOKEN_FORMAT": "{property} không phải token hợp lệ"
+  "TOKEN_FORMAT": "{property} không phải token hợp lệ",
+  "IS_UUID": "{property} phải là UUID",
+  "PHONE_FORMAT": "{property} chỉ được chứa chữ số, khoảng trắng và + - ( )",
+  "AT_LEAST_ONE_FIELD": "{property} phải có ít nhất một trường",
+  "IS_IN": "{property} phải là một trong các giá trị: {constraints.0}"
 }

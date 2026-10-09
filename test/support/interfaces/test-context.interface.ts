@@ -12,6 +12,7 @@ export interface TestContext {
   /** Seeds accounts without going through the API. */
   users: UserFactory;
   mail: MailRecorder;
+  storedFiles: () => Promise<string[]>;
   /** HTTP server to hand to `supertest`. */
   server: () => App;
   /** Empties every store the suite owns; call between cases. */

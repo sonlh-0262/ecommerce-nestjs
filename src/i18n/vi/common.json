@@ -7,5 +7,6 @@
   "TOO_MANY_REQUESTS": "Bạn gửi quá nhiều yêu cầu, vui lòng thử lại sau",
   "MALFORMED_REQUEST": "Không đọc được nội dung yêu cầu",
   "PAYLOAD_TOO_LARGE": "Nội dung yêu cầu quá lớn",
-  "INVALID_REQUEST": "Không thể xử lý yêu cầu"
+  "INVALID_REQUEST": "Không thể xử lý yêu cầu",
+  "FORBIDDEN": "Bạn không có quyền thực hiện thao tác này"
 }

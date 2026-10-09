@@ -61,6 +61,8 @@ export interface EnvironmentVariables {
   MAIL_FROM?: string;
   MAIL_FROM_NAME?: string;
   APP_WEB_URL?: string;
+
+  STORAGE_ROOT?: string;
 }
 
 const requiredInProduction = <T extends Joi.Schema>(schema: T): T =>
@@ -129,4 +131,6 @@ export const envValidationSchema = Joi.object<EnvironmentVariables>({
       .uri({ scheme: WEB_URL_SCHEMES })
       .pattern(NO_TRAILING_SLASH_PATTERN),
   ),
+
+  STORAGE_ROOT: Joi.string().min(1).optional(),
 }).unknown(true);

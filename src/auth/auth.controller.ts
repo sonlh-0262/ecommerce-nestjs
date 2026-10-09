@@ -15,6 +15,7 @@ import { Public } from '../common/decorators/public.decorator';
 import { MessageResponseDto } from '../common/dto/message-response.dto';
 import { RateLimit } from '../common/throttling/rate-limit.decorator';
 import { toUserResponse, UserResponseDto } from '../users/dto/user.dto';
+import { UserAvatarsService } from '../users/user-avatars.service';
 import { AUTH_RATE_LIMITS } from './auth.constants';
 import { AuthService } from './auth.service';
 import { AccountEmailDto } from './dto/account-email.dto';
@@ -39,6 +40,7 @@ export class AuthController {
     private readonly authService: AuthService,
     private readonly registrationService: RegistrationService,
     private readonly passwordResetService: PasswordResetService,
+    private readonly avatars: UserAvatarsService,
     private readonly i18n: I18nService,
   ) {}
 
@@ -115,7 +117,11 @@ export class AuthController {
   ): Promise<AuthenticatedUserResponseDto> {
     const { user, session } = await this.authService.login(dto.user);
 
-    return toAuthenticatedUserResponse(user, session);
+    return toAuthenticatedUserResponse(
+      user,
+      session,
+      await this.avatars.urlOf(user.id),
+    );
   }
 
   @Post('logout')

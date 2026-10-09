@@ -1,4 +1,10 @@
 {
   "EMAIL_TAKEN": "This email is already registered",
-  "USERNAME_TAKEN": "This username is already taken"
+  "USERNAME_TAKEN": "This username is already taken",
+  "NOT_FOUND": "User not found",
+  "WRONG_CURRENT_PASSWORD": "The current password is incorrect",
+  "PASSWORD_CHANGED": "Your password has been changed, please log in again",
+  "PASSWORD_UNCHANGED": "The new password must differ from the current one",
+  "CANNOT_CHANGE_OWN_STATUS": "You cannot change your own account status",
+  "USER_NOT_VERIFIED": "This account has not verified its email yet"
 }

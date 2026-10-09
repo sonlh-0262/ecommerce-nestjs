@@ -12,6 +12,7 @@ PostgreSQL.
 | Cache / tokens | Redis 7 (ioredis)                    |
 | Queue / mail   | BullMQ + nodemailer (Handlebars)     |
 | Rate limiting  | @nestjs/throttler, counted in Redis  |
+| Uploads        | multer (memory) + local disk         |
 | Auth           | JWT (passport-jwt) + bcrypt          |
 | Validation     | class-validator + Joi (env)          |
 | i18n           | nestjs-i18n (`en`, `vi`)             |
@@ -80,12 +81,25 @@ and the docs must not move when the API version does.
 | POST   | `/auth/logout`               | Bearer | default                | Revoke the token used for the request          |
 | POST   | `/auth/forgot-password`      | Guest  | 3 / 15 min / IP+email  | Email a password reset link (always 200)       |
 | POST   | `/auth/reset-password`       | Guest  | 5 / 15 min / IP        | Redeem the reset link, set a new password      |
+| GET    | `/users/me`                  | Bearer | default                | My profile, with `avatarUrl`                   |
+| PATCH  | `/users/me`                  | Bearer | default                | Change username / fullName / phone / address   |
+| PUT    | `/users/me/password`         | Bearer | 5 / 15 min / token     | Change my password, revoking every token       |
+| POST   | `/users/me/avatar`           | Bearer | 10 / hour / token      | Upload or replace my avatar (multipart `file`) |
+| GET    | `/attachments/:id`           | Bearer | default                | Download a stored file                         |
+| GET    | `/admin/users`               | Admin  | default                | List accounts: `q`, `status`, `role`, paging   |
+| GET    | `/admin/users/:id`           | Admin  | default                | One account + orders count / spent / last      |
+| PATCH  | `/admin/users/:id/status`    | Admin  | default                | Lock (`INACTIVE`) or unlock (`ACTIVE`)         |
 | GET    | `/health`                    | Guest  | none                   | Liveness probe, localised message              |
 | GET    | `/docs`                      | Guest  | -                      | Swagger UI (`/docs-json` for the raw document) |
 
 Every route needs a bearer token unless it is marked `@Public()`: the JWT
 guard is global, so a route that forgets to declare itself is closed rather
-than open.
+than open. Routes under `/admin` also carry `@Roles(UserRole.Admin)`, checked
+by a second global guard; any other account gets `403`.
+
+Lists take `limit` (1-100, default 20) and `offset` (default 0) and answer
+`{ <resource>: [...], <resource>Count }`, where the count covers every match,
+not just the page.
 
 Routes without a limit of their own are capped at `THROTTLE_LIMIT` requests
 per `THROTTLE_TTL` seconds per client (100 per 60 s by default). Counters live in Redis so the
@@ -175,6 +189,21 @@ one token is revoked - other sessions of the same account keep working.
 Changing a password revokes them all at once instead, through
 `users.password_changed_at`.
 
+### Profile and avatar
+
+```bash
+TOKEN=...   # from /auth/login
+curl -X PATCH http://localhost:3001/api/v1/users/me   -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json'   -d '{"user":{"fullName":"Son","phone":null}}'
+curl -X POST http://localhost:3001/api/v1/users/me/avatar   -H "Authorization: Bearer $TOKEN" -F 'file=@me.png'
+```
+
+`PATCH` changes only the fields sent; `null` or a blank string clears an
+optional field. An avatar must be a JPEG, PNG or WebP of at most 2 MB, checked
+by its first bytes rather than the name or the declared type. It is stored under
+`STORAGE_ROOT` (default `./storage`) as `yyyy/MM/<uuid>.<ext>` with a row in
+`attachments`; replacing it deletes the old file once the transaction commits.
+`avatarUrl` points at `GET /attachments/:id`, which needs a token.
+
 ### Health
 
 ```bash
@@ -231,7 +260,8 @@ The e2e suite creates and migrates `ecommerce_test` on first run, and empties
 every table between cases. It refuses to start unless `DB_DATABASE` ends in
 `_test` and `REDIS_KEY_PREFIX` contains `test`, so it can never wipe a
 development database. It reads `.env.test`, which points at the host ports, so
-the Docker stack has to be up. Mail is not sent from e2e: `MailQueueService` is
+the Docker stack has to be up. Uploaded files go to `./tmp/test-storage`, which
+is deleted between cases. Mail is not sent from e2e: `MailQueueService` is
 replaced by a recorder, so a case can read the token a mail would have carried.
 
 ## Quality gates
@@ -249,12 +279,13 @@ npm run build
 
 ```
 src/
+  attachments/  uploads: validation, local storage, download endpoint
   auth/         register, verify, login, logout, password reset, JWT guard
-  users/        User entity, lookups, password hashing, one-time tokens
+  users/        profile, avatar, admin user management, one-time tokens
   mail/         BullMQ queue and worker, Handlebars templates
-  common/       error filter, decorators, throttling, shared DTOs, transforms
+  common/       error filter, roles guard, decorators, throttling, pagination
   config/       typed config namespaces, env validation, app + swagger setup
-  database/     TypeORM data source, module, migrations, seeders
+  database/     TypeORM data source, transaction hooks, migrations, seeders
   redis/        shared ioredis client
   i18n/         translation catalogues
   main.ts       bootstrap

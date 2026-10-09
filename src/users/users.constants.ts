@@ -1,7 +1,12 @@
+import { hours, minutes } from '@nestjs/throttler';
+
+import { trackByBearerToken } from '../common/throttling/bearer-token.tracker';
+import { RouteRateLimit } from '../common/throttling/rate-limit.decorator';
 import {
   UNIQUE_USERS_EMAIL_INDEX,
   UNIQUE_USERS_USERNAME_INDEX,
 } from './entities/user.entity.constants';
+import { UserStatus } from './enums/user-status.enum';
 import { UserTokenType } from './enums/user-token-type.enum';
 
 /**
@@ -38,6 +43,7 @@ export const PASSWORD_MIN_LENGTH = 8;
 export const PASSWORD_MAX_LENGTH = 72;
 
 export const PASSWORD_STRENGTH_PATTERN = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/;
+export const PHONE_PATTERN = /^[0-9+\-\s()]+$/;
 
 export const USER_TOKEN_BYTES = 32;
 
@@ -54,3 +60,21 @@ export const USER_UNIQUE_CONFLICTS: Record<string, string> = {
   [UNIQUE_USERS_EMAIL_INDEX]: 'users.EMAIL_TAKEN',
   [UNIQUE_USERS_USERNAME_INDEX]: 'users.USERNAME_TAKEN',
 };
+
+export const USERS_RATE_LIMITS = {
+  changePassword: {
+    limit: 5,
+    ttl: minutes(15),
+    getTracker: trackByBearerToken,
+  },
+  uploadAvatar: { limit: 10, ttl: hours(1), getTracker: trackByBearerToken },
+} satisfies Record<string, RouteRateLimit>;
+
+export const ADMIN_SETTABLE_STATUSES = [
+  UserStatus.Active,
+  UserStatus.Inactive,
+] as const;
+
+export type AdminSettableStatus = (typeof ADMIN_SETTABLE_STATUSES)[number];
+
+export const ADMIN_USER_SEARCH_MAX_LENGTH = 100;

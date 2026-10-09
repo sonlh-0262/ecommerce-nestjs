@@ -24,6 +24,7 @@ export class AuthenticatedUserResponseDto {
 export function toAuthenticatedUserResponse(
   user: User,
   session: AuthSession,
+  avatarUrl: string | null = null,
 ): AuthenticatedUserResponseDto {
-  return { user: { ...toUserDto(user), ...session } };
+  return { user: { ...toUserDto(user, avatarUrl), ...session } };
 }

@@ -1,5 +1,9 @@
 import { applyDecorators } from '@nestjs/common';
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import {
+  ApiProperty,
+  ApiPropertyOptional,
+  ApiPropertyOptions,
+} from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
 import {
   IsEmail,
@@ -8,16 +12,20 @@ import {
   Length,
   Matches,
   MaxLength,
+  ValidateIf,
 } from 'class-validator';
 import { i18nValidationMessage } from 'nestjs-i18n';
 
-import { trim, trimLower } from '../../common/transforms/trim';
+import { trim, trimLower, trimToNull } from '../../common/transforms/trim';
 import {
+  ADDRESS_MAX_LENGTH,
   EMAIL_MAX_LENGTH,
   FULL_NAME_MAX_LENGTH,
   PASSWORD_MAX_LENGTH,
   PASSWORD_MIN_LENGTH,
   PASSWORD_STRENGTH_PATTERN,
+  PHONE_MAX_LENGTH,
+  PHONE_PATTERN,
   USER_TOKEN_PATTERN,
   USERNAME_MAX_LENGTH,
   USERNAME_MIN_LENGTH,
@@ -40,14 +48,16 @@ export const EmailField = () =>
     Transform(trimLower),
   );
 
-export const UsernameField = () =>
+export const UsernameField = ({ optional = false } = {}) =>
   applyDecorators(
     ApiProperty({
       example: 'sonlh',
       minLength: USERNAME_MIN_LENGTH,
       maxLength: USERNAME_MAX_LENGTH,
       pattern: USERNAME_PATTERN.source,
+      required: !optional,
     }),
+    ValidateIf((_object, value) => !optional || value !== undefined),
     IsString(IS_STRING),
     Length(USERNAME_MIN_LENGTH, USERNAME_MAX_LENGTH, LENGTH),
     Matches(USERNAME_PATTERN, {
@@ -73,17 +83,42 @@ export const NewPasswordField = () =>
     }),
   );
 
-export const FullNameField = () =>
+const NullableTextField = (
+  doc: ApiPropertyOptions & { maxLength: number },
+  ...rules: PropertyDecorator[]
+) =>
   applyDecorators(
-    ApiPropertyOptional({
-      example: 'Lanh Hung Son',
-      maxLength: FULL_NAME_MAX_LENGTH,
-    }),
+    ApiPropertyOptional({ ...doc, nullable: true }),
     IsOptional(),
     IsString(IS_STRING),
-    MaxLength(FULL_NAME_MAX_LENGTH, MAX_LENGTH),
-    Transform(trim),
+    MaxLength(doc.maxLength, MAX_LENGTH),
+    ...rules,
+    Transform(trimToNull),
   );
+
+export const FullNameField = () =>
+  NullableTextField({
+    example: 'Lanh Hung Son',
+    maxLength: FULL_NAME_MAX_LENGTH,
+  });
+
+export const PhoneField = () =>
+  NullableTextField(
+    {
+      example: '0901234567',
+      maxLength: PHONE_MAX_LENGTH,
+      pattern: PHONE_PATTERN.source,
+    },
+    Matches(PHONE_PATTERN, {
+      message: i18nValidationMessage('validation.PHONE_FORMAT'),
+    }),
+  );
+
+export const AddressField = () =>
+  NullableTextField({
+    example: '1 Nguyen Trai, Ha Noi',
+    maxLength: ADDRESS_MAX_LENGTH,
+  });
 
 export const UserTokenField = () =>
   applyDecorators(

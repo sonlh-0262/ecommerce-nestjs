@@ -18,6 +18,7 @@ import { AppService } from './app.service';
 import { AttachmentsModule } from './attachments/attachments.module';
 import { AuthModule } from './auth/auth.module';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
+import { CategoriesModule } from './categories/categories.module';
 import {
   LANGUAGE_FALLBACKS,
   LANGUAGE_HEADER,
@@ -39,6 +40,7 @@ import redisConfig, {
   REDIS_CONFIG_KEY,
   RedisConfig,
 } from './config/redis.config';
+import seedConfig from './config/seed.config';
 import storageConfig from './config/storage.config';
 import throttleConfig, {
   THROTTLE_CONFIG_KEY,
@@ -47,6 +49,7 @@ import throttleConfig, {
 import { buildThrottlerOptions } from './config/throttler-options';
 import { DatabaseModule } from './database/database.module';
 import { MailModule } from './mail/mail.module';
+import { ProductsModule } from './products/products.module';
 import { REDIS_CLIENT } from './redis/redis.constants';
 import { RedisModule } from './redis/redis.module';
 import { UsersModule } from './users/users.module';
@@ -64,6 +67,7 @@ import { UsersModule } from './users/users.module';
         throttleConfig,
         mailConfig,
         storageConfig,
+        seedConfig,
       ],
       validationSchema: envValidationSchema,
       validationOptions: { abortEarly: false },
@@ -119,6 +123,8 @@ import { UsersModule } from './users/users.module';
     AttachmentsModule,
     UsersModule,
     AuthModule,
+    CategoriesModule,
+    ProductsModule,
   ],
   controllers: [AppController],
   providers: [

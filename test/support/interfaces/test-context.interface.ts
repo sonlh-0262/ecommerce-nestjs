@@ -2,6 +2,7 @@ import { INestApplication } from '@nestjs/common';
 import { App } from 'supertest/types';
 import { DataSource } from 'typeorm';
 
+import { CatalogFactory } from '../factories/catalog.factory';
 import { UserFactory } from '../factories/user.factory';
 import { MailRecorder } from '../mail-recorder';
 
@@ -11,6 +12,7 @@ export interface TestContext {
   dataSource: DataSource;
   /** Seeds accounts without going through the API. */
   users: UserFactory;
+  catalog: CatalogFactory;
   mail: MailRecorder;
   storedFiles: () => Promise<string[]>;
   /** HTTP server to hand to `supertest`. */

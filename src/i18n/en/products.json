@@ -1,0 +1,9 @@
+{
+  "NOT_FOUND": "Product not found",
+  "CATEGORY_NOT_FOUND": "The selected category does not exist",
+  "SALE_PRICE_TOO_HIGH": "The sale price must be lower than the regular price",
+  "NO_IMAGES": "A product needs at least one image before it can be published",
+  "TOO_MANY_IMAGES": "A product can have at most {limit} images",
+  "LAST_IMAGE": "Cannot remove the last image of a published product",
+  "IMAGE_NOT_FOUND": "Image not found"
+}

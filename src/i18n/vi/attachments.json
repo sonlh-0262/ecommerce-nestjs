@@ -3,5 +3,7 @@
   "INVALID_FILE_TYPE": "Chỉ chấp nhận ảnh JPEG, PNG và WebP",
   "FILE_TOO_LARGE": "Tệp vượt quá giới hạn {limit} MB",
   "NOT_FOUND": "Không tìm thấy tệp",
-  "INVALID_UPLOAD": "Chỉ gửi đúng một tệp ảnh trong trường \"file\""
+  "INVALID_UPLOAD": "Chỉ gửi đúng một tệp ảnh trong trường \"file\"",
+  "INVALID_UPLOADS": "Gửi từ 1 đến {limit} tệp ảnh trong trường \"{field}\", không kèm tệp khác",
+  "TOO_MANY_FILES": "Chỉ gửi tối đa {limit} tệp mỗi lần"
 }

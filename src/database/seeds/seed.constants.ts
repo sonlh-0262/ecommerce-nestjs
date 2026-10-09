@@ -1,34 +1,36 @@
-import { UserRole } from '../../users/enums/user-role.enum';
-import { SeedAccount } from './interfaces/seed-account.interface';
+import * as path from 'path';
 
-/**
- * Password every seeded account shares.
- *
- * Deliberately a known value: these rows exist so a developer can log in on a
- * fresh database. That is also why `run-seeds.ts` refuses to run in
- * production - a published password is only acceptable where nothing real is
- * behind it.
- */
-export const SEED_PASSWORD = 'Password@123';
+import { SeedAdminAccount } from './interfaces/seed-admin-account.interface';
 
-/** `NODE_ENV` the seeder refuses to run against. */
-export const FORBIDDEN_SEED_ENVIRONMENT = 'production';
+const SEED_PASSWORD = 'Password@123';
 
-/**
- * The accounts a fresh database starts with: one of each role, both already
- * activated so they can log in without the email flow (which lands in B4).
- */
-export const SEED_ACCOUNTS: readonly SeedAccount[] = [
-  {
-    email: 'admin@example.com',
-    username: 'admin',
-    fullName: 'Seed Admin',
-    role: UserRole.Admin,
-  },
-  {
-    email: 'son@example.com',
-    username: 'sonlh',
-    fullName: 'Lanh Hung Son',
-    role: UserRole.User,
-  },
-];
+export const DEFAULT_SEED_ADMIN: SeedAdminAccount = {
+  email: 'admin@example.com',
+  username: 'admin',
+  fullName: 'Seed Admin',
+  password: SEED_PASSWORD,
+};
+
+export const SEED_IMAGES_DIRECTORY = path.join(__dirname, 'images');
+
+export const SEED_IMAGE_FILES = [
+  'placeholder-1.png',
+  'placeholder-2.png',
+  'placeholder-3.png',
+] as const;
+
+export const SEED_SCRAMBLE = 7919;
+
+export const SEED_PRICE_MIN = 50_000;
+export const SEED_PRICE_STEP = 10_000;
+export const SEED_PRICE_STEPS = 496;
+export const SEED_PRICE_ROUNDING = 1_000;
+export const SEED_SALE_RATIO = 0.9;
+export const SEED_SALE_EVERY = 4;
+
+export const SEED_STOCK_MIN = 5;
+export const SEED_STOCK_SPREAD = 95;
+export const SEED_SOLD_OUT_EVERY = 7;
+
+export const SEED_PUBLISH_CYCLE = 5;
+export const SEED_FEATURED_SLOT = 1;

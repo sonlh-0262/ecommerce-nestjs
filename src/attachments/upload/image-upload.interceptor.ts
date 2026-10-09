@@ -3,32 +3,46 @@ import {
   CallHandler,
   ExecutionContext,
   Injectable,
+  mixin,
   NestInterceptor,
   PayloadTooLargeException,
+  Type,
+  UnprocessableEntityException,
 } from '@nestjs/common';
-import { FileInterceptor, MulterModuleOptions } from '@nestjs/platform-express';
+import {
+  FileInterceptor,
+  FilesInterceptor,
+  MulterModuleOptions,
+} from '@nestjs/platform-express';
+import { multerExceptions } from '@nestjs/platform-express/multer/multer/multer.constants';
 import { I18nService } from 'nestjs-i18n';
 import { Observable } from 'rxjs';
 
 import {
-  IMAGE_UPLOAD_FIELD,
   MAX_FILE_SIZE,
   MAX_FILE_SIZE_MEGABYTES,
 } from '../attachments.constants';
+import { ImageUploadSpec } from '../interfaces/image-upload-spec.interface';
 
-export const IMAGE_UPLOAD_OPTIONS: MulterModuleOptions = {
-  limits: { fileSize: MAX_FILE_SIZE, files: 1, fields: 0, parts: 1 },
-  defParamCharset: 'utf8',
-};
-
-const MulterInterceptor = FileInterceptor(
-  IMAGE_UPLOAD_FIELD,
-  IMAGE_UPLOAD_OPTIONS,
-);
+export function imageUploadOptions({
+  maxFiles,
+  textFields,
+}: ImageUploadSpec): MulterModuleOptions {
+  return {
+    limits: {
+      fileSize: MAX_FILE_SIZE,
+      files: maxFiles,
+      fields: textFields,
+      parts: maxFiles + textFields,
+    },
+    defParamCharset: 'utf8',
+  };
+}
 
 export function translateUploadError(
   error: unknown,
   i18n: I18nService,
+  spec: ImageUploadSpec,
 ): unknown {
   if (error instanceof PayloadTooLargeException) {
     return new PayloadTooLargeException(
@@ -38,30 +52,52 @@ export function translateUploadError(
     );
   }
 
-  if (error instanceof BadRequestException) {
+  if (!(error instanceof BadRequestException)) {
+    return error;
+  }
+
+  if (spec.maxFiles === 1) {
     return new BadRequestException(i18n.t('attachments.INVALID_UPLOAD'));
   }
 
-  return error;
+  const args = { field: spec.field, limit: spec.maxFiles };
+
+  return error.message === multerExceptions.LIMIT_FILE_COUNT
+    ? new UnprocessableEntityException(
+        i18n.t('attachments.TOO_MANY_FILES', { args }),
+      )
+    : new BadRequestException(i18n.t('attachments.INVALID_UPLOADS', { args }));
 }
 
-@Injectable()
-export class ImageUploadInterceptor implements NestInterceptor {
-  private readonly multer: NestInterceptor = new MulterInterceptor();
+export function ImageUploadInterceptor(
+  spec: ImageUploadSpec,
+): Type<NestInterceptor> {
+  const options = imageUploadOptions(spec);
+  const MulterInterceptor =
+    spec.maxFiles === 1
+      ? FileInterceptor(spec.field, options)
+      : FilesInterceptor(spec.field, spec.maxFiles, options);
 
-  constructor(private readonly i18n: I18nService) {}
+  @Injectable()
+  class TranslatedImageUploadInterceptor implements NestInterceptor {
+    private readonly multer: NestInterceptor = new MulterInterceptor();
 
-  async intercept(
-    context: ExecutionContext,
-    next: CallHandler,
-  ): Promise<Observable<unknown>> {
-    try {
-      return (await this.multer.intercept(
-        context,
-        next,
-      )) as Observable<unknown>;
-    } catch (error) {
-      throw translateUploadError(error, this.i18n);
+    constructor(private readonly i18n: I18nService) {}
+
+    async intercept(
+      context: ExecutionContext,
+      next: CallHandler,
+    ): Promise<Observable<unknown>> {
+      try {
+        return (await this.multer.intercept(
+          context,
+          next,
+        )) as Observable<unknown>;
+      } catch (error) {
+        throw translateUploadError(error, this.i18n, spec);
+      }
     }
   }
+
+  return mixin(TranslatedImageUploadInterceptor);
 }

@@ -14,6 +14,11 @@
         "include": "mail/templates/**/*",
         "outDir": "dist",
         "watchAssets": true
+      },
+      {
+        "include": "database/seeds/images/**/*",
+        "outDir": "dist",
+        "watchAssets": true
       }
     ],
     "plugins": [

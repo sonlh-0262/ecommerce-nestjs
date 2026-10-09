@@ -7,6 +7,7 @@ import { Reflector } from '@nestjs/core';
 import { AuthGuard } from '@nestjs/passport';
 import { I18nService } from 'nestjs-i18n';
 
+import { IS_OPTIONAL_AUTH_KEY } from '../../common/decorators/optional-auth.decorator';
 import { IS_PUBLIC_KEY } from '../../common/decorators/public.decorator';
 import { JWT_STRATEGY_NAME } from '../auth.constants';
 
@@ -20,7 +21,7 @@ export class JwtAuthGuard extends AuthGuard(JWT_STRATEGY_NAME) {
   }
 
   canActivate(context: ExecutionContext) {
-    if (this.isPublic(context)) {
+    if (this.flagged(IS_PUBLIC_KEY, context)) {
       return true;
     }
 
@@ -37,6 +38,7 @@ export class JwtAuthGuard extends AuthGuard(JWT_STRATEGY_NAME) {
     error: unknown,
     user: TUser | false,
     _info: unknown,
+    context?: ExecutionContext,
   ): TUser {
     if (error) {
       throw error instanceof Error
@@ -44,16 +46,20 @@ export class JwtAuthGuard extends AuthGuard(JWT_STRATEGY_NAME) {
         : new UnauthorizedException(this.i18n.t('auth.UNAUTHORIZED'));
     }
 
-    if (!user) {
-      throw new UnauthorizedException(this.i18n.t('auth.UNAUTHORIZED'));
+    if (user) {
+      return user;
     }
 
-    return user;
+    if (context && this.flagged(IS_OPTIONAL_AUTH_KEY, context)) {
+      return null as TUser;
+    }
+
+    throw new UnauthorizedException(this.i18n.t('auth.UNAUTHORIZED'));
   }
 
-  private isPublic(context: ExecutionContext): boolean {
+  private flagged(key: string, context: ExecutionContext): boolean {
     return (
-      this.reflector.getAllAndOverride<boolean | undefined>(IS_PUBLIC_KEY, [
+      this.reflector.getAllAndOverride<boolean | undefined>(key, [
         context.getHandler(),
         context.getClass(),
       ]) === true

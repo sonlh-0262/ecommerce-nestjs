@@ -2,7 +2,7 @@ import {
   Injectable,
   Logger,
   NotFoundException,
-  StreamableFile,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -13,7 +13,9 @@ import { EntityManager, In, Repository } from 'typeorm';
 
 import { APP_CONFIG_KEY, AppConfig } from '../config/configuration';
 import { TransactionHooks } from '../database/transaction-hooks.service';
-import { ATTACHMENTS_ROUTE } from './attachments.constants';
+import { User } from '../users/entities/user.entity';
+import { ATTACHMENT_ACCESS, ATTACHMENTS_ROUTE } from './attachments.constants';
+import { AttachmentStreamableFile } from './download/attachment-streamable-file';
 import { Attachment } from './entities/attachment.entity';
 import { AttachableType } from './enums/attachable-type.enum';
 import { AttachmentOwner } from './interfaces/attachment-owner.interface';
@@ -140,14 +142,21 @@ export class AttachmentsService {
     return byOwner;
   }
 
-  async download(id: string): Promise<StreamableFile> {
-    const { attachment, stream } = await this.openForDownload(id);
+  async download(
+    id: string,
+    viewer: User | null,
+  ): Promise<AttachmentStreamableFile> {
+    const { attachment, stream } = await this.openForDownload(id, viewer);
 
-    return new StreamableFile(stream, {
-      type: attachment.fileType,
-      length: attachment.fileSize,
-      disposition: contentDisposition(attachment.fileName),
-    }).setErrorHandler((error, response) => {
+    return new AttachmentStreamableFile(
+      stream,
+      {
+        type: attachment.fileType,
+        length: attachment.fileSize,
+        disposition: contentDisposition(attachment.fileName),
+      },
+      ATTACHMENT_ACCESS[attachment.attachableType].cacheControl,
+    ).setErrorHandler((error, response) => {
       this.logger.error(
         `Streaming attachment ${attachment.id} failed: ${error.message}`,
       );
@@ -157,6 +166,7 @@ export class AttachmentsService {
 
   private async openForDownload(
     id: string,
+    viewer: User | null,
   ): Promise<{ attachment: Attachment; stream: Readable }> {
     const attachment = await this.attachmentsRepository.findOne({
       where: { id },
@@ -164,6 +174,10 @@ export class AttachmentsService {
 
     if (!attachment) {
       throw new NotFoundException(this.i18n.t('attachments.NOT_FOUND'));
+    }
+
+    if (!viewer && !ATTACHMENT_ACCESS[attachment.attachableType].isPublic) {
+      throw new UnauthorizedException(this.i18n.t('auth.UNAUTHORIZED'));
     }
 
     const stream = await this.storage.openReadStream(attachment.storagePath);

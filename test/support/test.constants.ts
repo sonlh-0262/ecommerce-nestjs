@@ -51,3 +51,11 @@ export const PROFILE_PATHS = {
 } as const;
 
 export const ADMIN_USERS_PATH = `${API_BASE_PATH}/admin/users`;
+
+export const CATEGORIES_PATH = `${API_BASE_PATH}/categories`;
+
+export const ADMIN_CATEGORIES_PATH = `${API_BASE_PATH}/admin/categories`;
+
+export const PRODUCTS_PATH = `${API_BASE_PATH}/products`;
+
+export const ADMIN_PRODUCTS_PATH = `${API_BASE_PATH}/admin/products`;

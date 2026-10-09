@@ -1,3 +1,6 @@
+import { AttachableType } from './enums/attachable-type.enum';
+import { ImageUploadSpec } from './interfaces/image-upload-spec.interface';
+
 export const URL_MAX_LENGTH = 500;
 export const FILE_NAME_MAX_LENGTH = 255;
 export const FILE_TYPE_MAX_LENGTH = 100;
@@ -22,10 +25,33 @@ export const ALLOWED_IMAGE_TYPES = [
 
 export type AllowedImageType = (typeof ALLOWED_IMAGE_TYPES)[number];
 
-export const IMAGE_UPLOAD_FIELD = 'file';
+const IMAGE_UPLOAD_FIELD = 'file';
+
+export const SINGLE_IMAGE_UPLOAD: ImageUploadSpec = {
+  field: IMAGE_UPLOAD_FIELD,
+  maxFiles: 1,
+  textFields: 0,
+};
 
 export const ATTACHMENTS_ROUTE = 'attachments';
 
 export const FALLBACK_FILE_NAME = 'upload';
 
 export const ATTACHMENT_CACHE_CONTROL = 'private, max-age=31536000, immutable';
+
+export const PUBLIC_ATTACHMENT_CACHE_CONTROL =
+  'public, max-age=31536000, immutable';
+
+export const ATTACHMENT_ACCESS: Record<
+  AttachableType,
+  { isPublic: boolean; cacheControl: string }
+> = {
+  [AttachableType.User]: {
+    isPublic: false,
+    cacheControl: ATTACHMENT_CACHE_CONTROL,
+  },
+  [AttachableType.Product]: {
+    isPublic: true,
+    cacheControl: PUBLIC_ATTACHMENT_CACHE_CONTROL,
+  },
+};

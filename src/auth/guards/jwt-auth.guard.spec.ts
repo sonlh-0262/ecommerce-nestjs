@@ -6,6 +6,7 @@ import {
 import { Reflector } from '@nestjs/core';
 import { I18nService } from 'nestjs-i18n';
 
+import { IS_OPTIONAL_AUTH_KEY } from '../../common/decorators/optional-auth.decorator';
 import { IS_PUBLIC_KEY } from '../../common/decorators/public.decorator';
 import { JwtAuthGuard } from './jwt-auth.guard';
 
@@ -107,6 +108,47 @@ describe('JwtAuthGuard', () => {
       expect(() => guard.handleRequest('failure', false, undefined)).toThrow(
         UnauthorizedException,
       );
+    });
+
+    describe('on an @OptionalAuth() route', () => {
+      const optional = () => {
+        const context = contextFor();
+        Reflect.defineMetadata(IS_OPTIONAL_AUTH_KEY, true, handler);
+
+        return context;
+      };
+
+      afterEach(() => {
+        Reflect.deleteMetadata(IS_OPTIONAL_AUTH_KEY, handler);
+      });
+
+      it('lets an anonymous caller through without a user', () => {
+        expect(
+          guard.handleRequest(null, false, undefined, optional()),
+        ).toBeNull();
+      });
+
+      it('still returns the user a valid token resolved', () => {
+        const user = { id: 'user-id' };
+
+        expect(guard.handleRequest(null, user, undefined, optional())).toBe(
+          user,
+        );
+      });
+
+      it('still refuses a locked account', () => {
+        const locked = new ForbiddenException('auth.ACCOUNT_INACTIVE');
+
+        expect(() =>
+          guard.handleRequest(locked, false, undefined, optional()),
+        ).toThrow(locked);
+      });
+    });
+
+    it('refuses an anonymous caller on a route without the flag', () => {
+      expect(() =>
+        guard.handleRequest(null, false, undefined, contextFor()),
+      ).toThrow(UnauthorizedException);
     });
   });
 });

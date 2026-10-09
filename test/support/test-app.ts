@@ -7,6 +7,7 @@ import { DataSource } from 'typeorm';
 
 import { AppModule } from '../../src/app.module';
 import { AuthService } from '../../src/auth/auth.service';
+import { Category } from '../../src/categories/entities/category.entity';
 import { configureApp } from '../../src/config/app-setup';
 import { APP_CONFIG_KEY, AppConfig } from '../../src/config/configuration';
 import {
@@ -20,9 +21,11 @@ import {
 } from '../../src/config/storage.config';
 import { setupSwagger } from '../../src/config/swagger';
 import { MailQueueService } from '../../src/mail/mail-queue.service';
+import { Product } from '../../src/products/entities/product.entity';
 import { REDIS_CLIENT } from '../../src/redis/redis.constants';
 import { User } from '../../src/users/entities/user.entity';
 import { PasswordService } from '../../src/users/password.service';
+import { CatalogFactory } from './factories/catalog.factory';
 import { UserFactory } from './factories/user.factory';
 import { TestAppOptions } from './interfaces/test-app-options.interface';
 import { TestContext } from './interfaces/test-context.interface';
@@ -83,6 +86,10 @@ export async function createTestApp(
       dataSource.getRepository(User),
       app.get(PasswordService),
       app.get(AuthService),
+    ),
+    catalog: new CatalogFactory(
+      dataSource.getRepository(Category),
+      dataSource.getRepository(Product),
     ),
     mail,
     storedFiles: () => storedFiles(storageConfig),

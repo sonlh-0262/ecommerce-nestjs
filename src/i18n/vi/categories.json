@@ -1,0 +1,9 @@
+{
+  "NOT_FOUND": "Không tìm thấy danh mục",
+  "PARENT_NOT_FOUND": "Danh mục cha không tồn tại",
+  "PARENT_IS_SELF": "Danh mục không thể là cha của chính nó",
+  "MAX_DEPTH_EXCEEDED": "Danh mục chỉ hỗ trợ tối đa {maxDepth} cấp",
+  "HAS_PRODUCTS": "Danh mục này vẫn còn sản phẩm",
+  "HAS_CHILDREN": "Danh mục này vẫn còn danh mục con",
+  "NAME_TAKEN": "Đã có danh mục cùng tên ở cấp này"
+}

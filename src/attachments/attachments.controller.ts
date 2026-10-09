@@ -19,10 +19,13 @@ import { Response } from 'express';
 
 import { SWAGGER_BEARER_AUTH_NAME } from '../common/constants/swagger';
 import { ApiErrorResponse } from '../common/decorators/api-error-response.decorator';
+import { OptionalAuth } from '../common/decorators/optional-auth.decorator';
+import { OptionalUser } from '../common/decorators/optional-user.decorator';
 import { ParseUuidPipe } from '../common/pipes/parse-uuid.pipe';
+import { User } from '../users/entities/user.entity';
 import {
   ALLOWED_IMAGE_TYPES,
-  ATTACHMENT_CACHE_CONTROL,
+  ATTACHMENT_ACCESS,
   ATTACHMENTS_ROUTE,
 } from './attachments.constants';
 import { AttachmentsService } from './attachments.service';
@@ -37,12 +40,14 @@ export class AttachmentsController {
   constructor(private readonly attachmentsService: AttachmentsService) {}
 
   @Get(':id')
+  @OptionalAuth()
   @Header('X-Content-Type-Options', 'nosniff')
   @ApiOperation({
     summary: 'Download an attachment',
     description:
-      'Streams a stored file to a signed-in account. Files never change ' +
-      'once stored, so the response may be cached privately for a year.',
+      'Streams a stored file. Product images are public; any other file ' +
+      'needs a token. Files never change once stored, so the response may ' +
+      'be cached for a year - publicly for product images, privately otherwise.',
   })
   @ApiParam({ name: 'id', format: 'uuid' })
   @ApiOkResponse({
@@ -55,7 +60,10 @@ export class AttachmentsController {
     ),
   })
   @ApiErrorResponse(HttpStatus.BAD_REQUEST, 'The id is not a uuid.')
-  @ApiErrorResponse(HttpStatus.UNAUTHORIZED, 'Missing or invalid token.')
+  @ApiErrorResponse(
+    HttpStatus.UNAUTHORIZED,
+    'The file is not a product image and the token is missing or invalid.',
+  )
   @ApiErrorResponse(HttpStatus.FORBIDDEN, 'The account has been locked.')
   @ApiErrorResponse(
     HttpStatus.NOT_FOUND,
@@ -63,13 +71,17 @@ export class AttachmentsController {
   )
   async download(
     @Param('id', ParseUuidPipe) id: string,
+    @OptionalUser() viewer: User | null,
     @Res({ passthrough: true }) response: Response,
   ): Promise<StreamableFile> {
     const { attachment, stream } =
-      await this.attachmentsService.openForDownload(id);
+      await this.attachmentsService.openForDownload(id, viewer);
 
     response.once('close', () => stream.destroy());
-    response.setHeader('Cache-Control', ATTACHMENT_CACHE_CONTROL);
+    response.setHeader(
+      'Cache-Control',
+      ATTACHMENT_ACCESS[attachment.attachableType].cacheControl,
+    );
     response.setHeader(
       'Content-Disposition',
       `inline; filename="${asciiFallback(attachment.fileName)}"; ` +

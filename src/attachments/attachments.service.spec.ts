@@ -1,6 +1,7 @@
 import {
   Logger,
   NotFoundException,
+  UnauthorizedException,
   UnprocessableEntityException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -10,6 +11,7 @@ import { EntityManager, In, Repository } from 'typeorm';
 
 import { AppConfig } from '../config/configuration';
 import { TransactionHooks } from '../database/transaction-hooks.service';
+import { buildUser } from '../users/entities/user.fixture';
 import { AttachmentsService } from './attachments.service';
 import { Attachment } from './entities/attachment.entity';
 import { AttachableType } from './enums/attachable-type.enum';
@@ -294,7 +296,7 @@ describe('AttachmentsService', () => {
     it('opens the stored file of the attachment', async () => {
       repositoryMock.findOne.mockResolvedValue(buildAttachment());
 
-      const result = await service.openForDownload('attachment-id');
+      const result = await service.openForDownload('attachment-id', null);
 
       expect(result.attachment.id).toBe('attachment-id');
       expect(result.stream).toBeInstanceOf(Readable);
@@ -306,9 +308,9 @@ describe('AttachmentsService', () => {
     it('answers an unknown id with 404', async () => {
       repositoryMock.findOne.mockResolvedValue(null);
 
-      await expect(service.openForDownload('missing')).rejects.toBeInstanceOf(
-        NotFoundException,
-      );
+      await expect(
+        service.openForDownload('missing', null),
+      ).rejects.toBeInstanceOf(NotFoundException);
     });
 
     it('answers with 404 when the row outlived its file', async () => {
@@ -316,8 +318,29 @@ describe('AttachmentsService', () => {
       storageMock.openReadStream.mockResolvedValue(null);
 
       await expect(
-        service.openForDownload('attachment-id'),
+        service.openForDownload('attachment-id', null),
       ).rejects.toBeInstanceOf(NotFoundException);
+    });
+
+    it('refuses an anonymous caller a file that is not public', async () => {
+      repositoryMock.findOne.mockResolvedValue(
+        buildAttachment({ attachableType: AttachableType.User }),
+      );
+
+      await expect(
+        service.openForDownload('attachment-id', null),
+      ).rejects.toBeInstanceOf(UnauthorizedException);
+      expect(storageMock.openReadStream).not.toHaveBeenCalled();
+    });
+
+    it('opens a private file for a signed-in caller', async () => {
+      repositoryMock.findOne.mockResolvedValue(
+        buildAttachment({ attachableType: AttachableType.User }),
+      );
+
+      await expect(
+        service.openForDownload('attachment-id', buildUser()),
+      ).resolves.toMatchObject({ attachment: { id: 'attachment-id' } });
     });
   });
 

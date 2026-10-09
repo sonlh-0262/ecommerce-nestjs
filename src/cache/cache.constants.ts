@@ -1,0 +1,1 @@
+export const CACHE_COMMAND_TIMEOUT_MS = 500;

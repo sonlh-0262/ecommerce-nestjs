@@ -132,6 +132,35 @@ describe('envValidationSchema', () => {
     });
   });
 
+  describe('SEED_ADMIN_*', () => {
+    it('accepts an empty admin account', () => {
+      expect(
+        validate({ SEED_ADMIN_EMAIL: '', SEED_ADMIN_PASSWORD: '' }).error,
+      ).toBeUndefined();
+    });
+
+    it('accepts a strong admin password', () => {
+      expect(
+        validate({
+          SEED_ADMIN_EMAIL: 'owner@shop.local',
+          SEED_ADMIN_PASSWORD: 'Str0ngPassword',
+        }).error,
+      ).toBeUndefined();
+    });
+
+    it('rejects an admin email that is not an address', () => {
+      expect(validate({ SEED_ADMIN_EMAIL: 'owner' }).error?.message).toContain(
+        'SEED_ADMIN_EMAIL',
+      );
+    });
+
+    it('rejects an admin password the API would refuse', () => {
+      expect(
+        validate({ SEED_ADMIN_PASSWORD: 'weakpassword' }).error?.message,
+      ).toContain('SEED_ADMIN_PASSWORD');
+    });
+  });
+
   describe('REDIS_DB', () => {
     it('rejects an index outside the 16 Redis provides', () => {
       const { error } = validate({ REDIS_DB: '16' });

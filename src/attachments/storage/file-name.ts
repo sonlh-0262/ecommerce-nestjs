@@ -65,7 +65,14 @@ export function sanitiseFileName(original: string, extension: string): string {
     : withExtension;
 }
 
-export function asciiFallback(fileName: string): string {
+export function contentDisposition(fileName: string): string {
+  return (
+    `inline; filename="${asciiFallback(fileName)}"; ` +
+    `filename*=UTF-8''${encodeURIComponent(fileName)}`
+  );
+}
+
+function asciiFallback(fileName: string): string {
   return [...fileName]
     .map((character) => {
       const code = character.charCodeAt(0);

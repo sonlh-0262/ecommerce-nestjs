@@ -1,4 +1,9 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  NotFoundException,
+  StreamableFile,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { randomUUID } from 'crypto';
@@ -16,7 +21,7 @@ import {
   UploadedImage,
   ValidatedImage,
 } from './interfaces/uploaded-image.interface';
-import { sanitiseFileName } from './storage/file-name';
+import { contentDisposition, sanitiseFileName } from './storage/file-name';
 import {
   buildStoragePath,
   LocalStorageService,
@@ -135,7 +140,22 @@ export class AttachmentsService {
     return byOwner;
   }
 
-  async openForDownload(
+  async download(id: string): Promise<StreamableFile> {
+    const { attachment, stream } = await this.openForDownload(id);
+
+    return new StreamableFile(stream, {
+      type: attachment.fileType,
+      length: attachment.fileSize,
+      disposition: contentDisposition(attachment.fileName),
+    }).setErrorHandler((error, response) => {
+      this.logger.error(
+        `Streaming attachment ${attachment.id} failed: ${error.message}`,
+      );
+      response.end();
+    });
+  }
+
+  private async openForDownload(
     id: string,
   ): Promise<{ attachment: Attachment; stream: Readable }> {
     const attachment = await this.attachmentsRepository.findOne({

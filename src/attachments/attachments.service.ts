@@ -15,6 +15,7 @@ import { APP_CONFIG_KEY, AppConfig } from '../config/configuration';
 import { TransactionHooks } from '../database/transaction-hooks.service';
 import { User } from '../users/entities/user.entity';
 import { ATTACHMENT_ACCESS, ATTACHMENTS_ROUTE } from './attachments.constants';
+import { AttachmentStreamableFile } from './download/attachment-streamable-file';
 import { Attachment } from './entities/attachment.entity';
 import { AttachableType } from './enums/attachable-type.enum';
 import { AttachmentOwner } from './interfaces/attachment-owner.interface';
@@ -22,7 +23,7 @@ import {
   UploadedImage,
   ValidatedImage,
 } from './interfaces/uploaded-image.interface';
-import { sanitiseFileName } from './storage/file-name';
+import { contentDisposition, sanitiseFileName } from './storage/file-name';
 import {
   buildStoragePath,
   LocalStorageService,
@@ -141,7 +142,29 @@ export class AttachmentsService {
     return byOwner;
   }
 
-  async openForDownload(
+  async download(
+    id: string,
+    viewer: User | null,
+  ): Promise<AttachmentStreamableFile> {
+    const { attachment, stream } = await this.openForDownload(id, viewer);
+
+    return new AttachmentStreamableFile(
+      stream,
+      {
+        type: attachment.fileType,
+        length: attachment.fileSize,
+        disposition: contentDisposition(attachment.fileName),
+      },
+      ATTACHMENT_ACCESS[attachment.attachableType].cacheControl,
+    ).setErrorHandler((error, response) => {
+      this.logger.error(
+        `Streaming attachment ${attachment.id} failed: ${error.message}`,
+      );
+      response.end();
+    });
+  }
+
+  private async openForDownload(
     id: string,
     viewer: User | null,
   ): Promise<{ attachment: Attachment; stream: Readable }> {

@@ -3,10 +3,9 @@ import {
   Get,
   Header,
   HttpStatus,
-  Logger,
   Param,
-  Res,
   StreamableFile,
+  UseInterceptors,
 } from '@nestjs/common';
 import {
   ApiBearerAuth,
@@ -15,7 +14,6 @@ import {
   ApiParam,
   ApiTags,
 } from '@nestjs/swagger';
-import { Response } from 'express';
 
 import { SWAGGER_BEARER_AUTH_NAME } from '../common/constants/swagger';
 import { ApiErrorResponse } from '../common/decorators/api-error-response.decorator';
@@ -25,23 +23,22 @@ import { ParseUuidPipe } from '../common/pipes/parse-uuid.pipe';
 import { User } from '../users/entities/user.entity';
 import {
   ALLOWED_IMAGE_TYPES,
-  ATTACHMENT_ACCESS,
   ATTACHMENTS_ROUTE,
 } from './attachments.constants';
 import { AttachmentsService } from './attachments.service';
-import { asciiFallback } from './storage/file-name';
+import { CacheControlInterceptor } from './download/cache-control.interceptor';
+import { CloseStreamInterceptor } from './download/close-stream.interceptor';
 
 @ApiTags('Attachments')
 @ApiBearerAuth(SWAGGER_BEARER_AUTH_NAME)
 @Controller(ATTACHMENTS_ROUTE)
 export class AttachmentsController {
-  private readonly logger = new Logger(AttachmentsController.name);
-
   constructor(private readonly attachmentsService: AttachmentsService) {}
 
   @Get(':id')
   @OptionalAuth()
   @Header('X-Content-Type-Options', 'nosniff')
+  @UseInterceptors(CloseStreamInterceptor, CacheControlInterceptor)
   @ApiOperation({
     summary: 'Download an attachment',
     description:
@@ -69,33 +66,10 @@ export class AttachmentsController {
     HttpStatus.NOT_FOUND,
     'No such attachment, or its file is missing.',
   )
-  async download(
+  download(
     @Param('id', ParseUuidPipe) id: string,
     @OptionalUser() viewer: User | null,
-    @Res({ passthrough: true }) response: Response,
   ): Promise<StreamableFile> {
-    const { attachment, stream } =
-      await this.attachmentsService.openForDownload(id, viewer);
-
-    response.once('close', () => stream.destroy());
-    response.setHeader(
-      'Cache-Control',
-      ATTACHMENT_ACCESS[attachment.attachableType].cacheControl,
-    );
-    response.setHeader(
-      'Content-Disposition',
-      `inline; filename="${asciiFallback(attachment.fileName)}"; ` +
-        `filename*=UTF-8''${encodeURIComponent(attachment.fileName)}`,
-    );
-
-    return new StreamableFile(stream, {
-      type: attachment.fileType,
-      length: attachment.fileSize,
-    }).setErrorHandler((error, res) => {
-      this.logger.error(
-        `Streaming attachment ${attachment.id} failed: ${error.message}`,
-      );
-      res.end();
-    });
+    return this.attachmentsService.download(id, viewer);
   }
 }

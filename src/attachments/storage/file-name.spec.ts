@@ -1,5 +1,5 @@
 import { FILE_NAME_MAX_LENGTH } from '../attachments.constants';
-import { asciiFallback, sanitiseFileName } from './file-name';
+import { contentDisposition, sanitiseFileName } from './file-name';
 
 const BACKSLASH = String.fromCharCode(92);
 
@@ -79,20 +79,32 @@ describe('sanitiseFileName', () => {
   });
 });
 
-describe('asciiFallback', () => {
-  it('keeps printable ASCII', () => {
-    expect(asciiFallback('avatar (1).png')).toBe('avatar (1).png');
+describe('contentDisposition', () => {
+  it('keeps printable ASCII in the quoted name', () => {
+    expect(contentDisposition('avatar (1).png')).toBe(
+      `inline; filename="avatar (1).png"; filename*=UTF-8''avatar%20(1).png`,
+    );
   });
 
-  it('replaces every other character with an underscore', () => {
-    expect(asciiFallback('ảnh đẹp.png')).toBe('_nh __p.png');
+  it('replaces every other character in the quoted name', () => {
+    expect(contentDisposition('ảnh đẹp.png')).toContain(
+      'filename="_nh __p.png"',
+    );
+  });
+
+  it('carries the original name percent-encoded', () => {
+    expect(contentDisposition('ảnh đẹp.png')).toContain(
+      `filename*=UTF-8''${encodeURIComponent('ảnh đẹp.png')}`,
+    );
   });
 
   it('replaces quotes and backslashes, which would end the quoted name', () => {
-    expect(asciiFallback(`a"b${BACKSLASH}c.png`)).toBe('a_b_c.png');
+    expect(contentDisposition(`a"b${BACKSLASH}c.png`)).toContain(
+      'filename="a_b_c.png"',
+    );
   });
 
   it('replaces control characters, so a header cannot be split', () => {
-    expect(asciiFallback('a\r\nb.png')).toBe('a__b.png');
+    expect(contentDisposition('a\r\nb.png')).toContain('filename="a__b.png"');
   });
 });

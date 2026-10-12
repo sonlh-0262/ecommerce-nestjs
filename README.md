@@ -30,6 +30,8 @@ cp .env.example .env      # .env is gitignored, so create it once per clone
 docker compose up -d --build
 docker compose exec api npm run migration:run
 docker compose exec api npm run seed
+docker compose exec api npm run console -- seed:categories
+docker compose exec api npm run console -- seed:products
 ```
 
 The stack publishes its host ports off the defaults so it can run beside the
@@ -85,10 +87,24 @@ and the docs must not move when the API version does.
 | PATCH  | `/users/me`                  | Bearer | default                | Change username / fullName / phone / address   |
 | PUT    | `/users/me/password`         | Bearer | 5 / 15 min / token     | Change my password, revoking every token       |
 | POST   | `/users/me/avatar`           | Bearer | 10 / hour / token      | Upload or replace my avatar (multipart `file`) |
-| GET    | `/attachments/:id`           | Bearer | default                | Download a stored file                         |
+| GET    | `/attachments/:id`           | Mixed  | default                | Download a file: product images are public, avatars need a token |
+| GET    | `/categories`                | Guest  | default                | List categories: `parentId` (`null` = roots), `isActive`, paging; cached |
+| GET    | `/categories/:slug`          | Guest  | default                | One category with its parent and children      |
+| GET    | `/products`                  | Guest  | default                | Search and filter published products           |
+| GET    | `/products/featured`         | Guest  | default                | Featured products, best sellers first; cached  |
+| GET    | `/products/:slug`            | Guest  | default                | One published product with images              |
 | GET    | `/admin/users`               | Admin  | default                | List accounts: `q`, `status`, `role`, paging   |
 | GET    | `/admin/users/:id`           | Admin  | default                | One account + orders count / spent / last      |
 | PATCH  | `/admin/users/:id/status`    | Admin  | default                | Lock (`INACTIVE`) or unlock (`ACTIVE`)         |
+| POST   | `/admin/categories`          | Admin  | default                | Create a category (two levels at most)         |
+| PATCH  | `/admin/categories/:id`      | Admin  | default                | Rename, move or hide a category                |
+| DELETE | `/admin/categories/:id`      | Admin  | default                | Delete an empty category                       |
+| GET    | `/admin/products`            | Admin  | default                | Products in any status, `includeDeleted`       |
+| POST   | `/admin/products`            | Admin  | default                | Create a draft product                         |
+| PATCH  | `/admin/products/:id`        | Admin  | default                | Update or publish (needs an image)             |
+| DELETE | `/admin/products/:id`        | Admin  | default                | Soft delete: ARCHIVED, removed from carts      |
+| POST   | `/admin/products/:id/images` | Admin  | default                | Upload 1-5 images (multipart `files`)          |
+| DELETE | `/admin/products/:id/images/:imageId` | Admin | default        | Delete an image; the next becomes thumbnail    |
 | GET    | `/health`                    | Guest  | none                   | Liveness probe, localised message              |
 | GET    | `/docs`                      | Guest  | -                      | Swagger UI (`/docs-json` for the raw document) |
 
@@ -202,7 +218,22 @@ optional field. An avatar must be a JPEG, PNG or WebP of at most 2 MB, checked
 by its first bytes rather than the name or the declared type. It is stored under
 `STORAGE_ROOT` (default `./storage`) as `yyyy/MM/<uuid>.<ext>` with a row in
 `attachments`; replacing it deletes the old file once the transaction commits.
-`avatarUrl` points at `GET /attachments/:id`, which needs a token.
+`avatarUrl` points at `GET /attachments/:id`, which needs a token for an
+avatar but not for a product image.
+
+### Catalog
+
+```bash
+curl 'http://localhost:3001/api/v1/products?q=ao%20thun&category=thoi-trang-nam&sort=price_asc'
+curl -X POST http://localhost:3001/api/v1/admin/products/$ID/images   -H "Authorization: Bearer $TOKEN" -F 'files=@front.png' -F 'files=@back.png' -F 'isThumbnail=true'
+```
+
+`q` is a full-text search that ignores accents. Prices are whole VND and the
+price filters compare the sale price when there is one. Slugs come from the
+name and never change on rename. `GET /categories` and `GET /products/featured`
+are cached in Redis for five minutes; every admin write bumps a generation
+counter so the next read misses. When Redis is down both are served straight
+from the database.
 
 ### Health
 
@@ -211,11 +242,22 @@ curl http://localhost:3001/health
 curl 'http://localhost:3001/health?lang=vi'
 ```
 
-## Seeded accounts
+## Seeding
 
-`npm run seed` is idempotent, so it can be re-run after `migration:reset`. It
-refuses to run with `NODE_ENV=production`, because every seeded account shares
-one published password.
+Seeders are `nest-commander` commands: `npm run console -- <command>`
+(`npm run console:prod -- <command>` from a production build). Every one of them
+can be re-run: what already exists is skipped, and an existing admin keeps its
+password. A failing command exits with code 1.
+
+| Command           | Creates                                                         |
+| ----------------- | --------------------------------------------------------------- |
+| `seed:admin`      | The admin account (`npm run seed` is an alias)                  |
+| `seed:categories` | 8 root categories with 2-3 sub-categories each                  |
+| `seed:products`   | 50 products with placeholder images, 40 published, 10 featured |
+
+`seed:admin` uses `SEED_ADMIN_EMAIL` / `SEED_ADMIN_PASSWORD` when set; with
+`NODE_ENV=production` it refuses to run without them, because the default
+password is published. `seed:products` refuses production altogether.
 
 | Email               | Username | Role  | Password       |
 | ------------------- | -------- | ----- | -------------- |
@@ -282,6 +324,10 @@ src/
   attachments/  uploads: validation, local storage, download endpoint
   auth/         register, verify, login, logout, password reset, JWT guard
   users/        profile, avatar, admin user management, one-time tokens
+  categories/   category tree: public read, admin CRUD
+  products/     product search, admin CRUD, product images
+  cache/        Redis cache with generation-based invalidation
+  console/      nest-commander seeders
   mail/         BullMQ queue and worker, Handlebars templates
   common/       error filter, roles guard, decorators, throttling, pagination
   config/       typed config namespaces, env validation, app + swagger setup

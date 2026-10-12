@@ -1,28 +1,44 @@
 import { applyDecorators, HttpStatus, UseInterceptors } from '@nestjs/common';
-import { ApiBody, ApiConsumes } from '@nestjs/swagger';
+import { ApiBody, ApiConsumes, SchemaObject } from '@nestjs/swagger';
 
 import { ApiErrorResponse } from '../../common/decorators/api-error-response.decorator';
 import {
   ALLOWED_IMAGE_TYPES,
-  IMAGE_UPLOAD_FIELD,
   MAX_FILE_SIZE_MEGABYTES,
+  SINGLE_IMAGE_UPLOAD,
 } from '../attachments.constants';
+import { ImageUploadSpec } from '../interfaces/image-upload-spec.interface';
 import { ImageUploadInterceptor } from './image-upload.interceptor';
 
-export function UploadImage() {
+const IMAGE_FILE: SchemaObject = {
+  type: 'string',
+  format: 'binary',
+  description: `${ALLOWED_IMAGE_TYPES.join(', ')}, at most ${MAX_FILE_SIZE_MEGABYTES} MB.`,
+};
+
+export function UploadImages(
+  spec: ImageUploadSpec,
+  textFields: Record<string, SchemaObject> = {},
+) {
+  const multiple = spec.maxFiles > 1;
+
   return applyDecorators(
-    UseInterceptors(ImageUploadInterceptor),
+    UseInterceptors(ImageUploadInterceptor(spec)),
     ApiConsumes('multipart/form-data'),
     ApiBody({
       schema: {
         type: 'object',
-        required: [IMAGE_UPLOAD_FIELD],
+        required: [spec.field],
         properties: {
-          [IMAGE_UPLOAD_FIELD]: {
-            type: 'string',
-            format: 'binary',
-            description: `${ALLOWED_IMAGE_TYPES.join(', ')}, at most ${MAX_FILE_SIZE_MEGABYTES} MB.`,
-          },
+          [spec.field]: multiple
+            ? {
+                type: 'array',
+                items: IMAGE_FILE,
+                minItems: 1,
+                maxItems: spec.maxFiles,
+              }
+            : IMAGE_FILE,
+          ...textFields,
         },
       },
     }),
@@ -32,11 +48,15 @@ export function UploadImage() {
     ),
     ApiErrorResponse(
       HttpStatus.PAYLOAD_TOO_LARGE,
-      `The file is larger than ${MAX_FILE_SIZE_MEGABYTES} MB.`,
+      `A file is larger than ${MAX_FILE_SIZE_MEGABYTES} MB.`,
     ),
     ApiErrorResponse(
       HttpStatus.UNPROCESSABLE_ENTITY,
-      'The content is not a JPEG, PNG or WebP image.',
+      multiple
+        ? `A file is not a JPEG, PNG or WebP image, or more than ${spec.maxFiles} were sent.`
+        : 'The content is not a JPEG, PNG or WebP image.',
     ),
   );
 }
+
+export const UploadImage = () => UploadImages(SINGLE_IMAGE_UPLOAD);

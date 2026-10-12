@@ -24,7 +24,9 @@
     "test:cov": "jest --coverage",
     "test:debug": "node --inspect-brk node_modules/.bin/jest --runInBand",
     "test:e2e": "jest --config ./test/jest-e2e.json --runInBand",
-    "seed": "ts-node -r tsconfig-paths/register src/database/seeds/run-seeds.ts",
+    "console": "ts-node -r tsconfig-paths/register src/console/main.ts",
+    "console:prod": "node dist/console/main",
+    "seed": "npm run console -- seed:admin",
     "typeorm": "typeorm-ts-node-commonjs -d src/database/data-source.ts",
     "migration:create": "typeorm-ts-node-commonjs migration:create",
     "migration:generate": "typeorm-ts-node-commonjs -d src/database/data-source.ts migration:generate",
@@ -55,6 +57,7 @@
     "handlebars": "^4.7.9",
     "ioredis": "^5.9.1",
     "joi": "^18.2.9",
+    "nest-commander": "^3.21.0",
     "nestjs-i18n": "^10.8.5",
     "nodemailer": "^10.0.15",
     "passport": "^0.7.0",
@@ -62,6 +65,7 @@
     "pg": "^8.23.0",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",
+    "slugify": "^1.6.9",
     "typeorm": "^0.3.31"
   },
   "devDependencies": {

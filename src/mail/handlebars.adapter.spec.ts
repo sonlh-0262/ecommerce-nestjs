@@ -2,7 +2,10 @@ import { MailerOptions } from '@nestjs-modules/mailer';
 import * as path from 'path';
 
 import { HandlebarsTemplateAdapter } from './handlebars.adapter';
-import { MAIL_ACTION_TEMPLATE } from './mail.constants';
+import {
+  MAIL_ACTION_TEMPLATE,
+  MAIL_ORDER_CREATED_TEMPLATE,
+} from './mail.constants';
 
 describe('HandlebarsTemplateAdapter', () => {
   const options: MailerOptions = {
@@ -68,6 +71,24 @@ describe('HandlebarsTemplateAdapter', () => {
     expect(
       html.split('https://shop.example.com/verify-email?token&#x3D;abc'),
     ).toHaveLength(3);
+  });
+
+  it('lists every order line and the totals in the order template', async () => {
+    const html = await render(MAIL_ORDER_CREATED_TEMPLATE, {
+      ...frame,
+      labels: { total: 'Total', shippingAddress: 'Shipping address' },
+      items: [
+        { name: 'T-shirt', quantity: 2, lineTotal: '₫300,000' },
+        { name: 'Cap', quantity: 1, lineTotal: '₫45,000' },
+      ],
+      total: '₫375,000',
+      shippingAddress: '1 Nguyen Trai <b>Ha Noi</b>',
+    });
+
+    expect(html).toContain('<td>T-shirt</td>');
+    expect(html).toContain('<td>Cap</td>');
+    expect(html).toContain('₫375,000');
+    expect(html).toContain('1 Nguyen Trai &lt;b&gt;Ha Noi&lt;/b&gt;');
   });
 
   it('escapes user input', async () => {

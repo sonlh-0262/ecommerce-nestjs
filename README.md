@@ -93,6 +93,16 @@ and the docs must not move when the API version does.
 | GET    | `/products`                  | Guest  | default                | Search and filter published products           |
 | GET    | `/products/featured`         | Guest  | default                | Featured products, best sellers first; cached  |
 | GET    | `/products/:slug`            | Guest  | default                | One published product with images              |
+| GET    | `/cart`                      | Bearer | default                | My cart at current prices, unavailable items flagged |
+| POST   | `/cart/items`                | Bearer | default                | Add a product; adds up with what is already there |
+| PATCH  | `/cart/items/:itemId`        | Bearer | default                | Set the quantity of an item                    |
+| DELETE | `/cart/items/:itemId`        | Bearer | default                | Remove an item                                 |
+| DELETE | `/cart/items`                | Bearer | default                | Empty my cart                                  |
+| POST   | `/orders`                    | Bearer | default                | Order the whole cart: PENDING, stock taken, mail sent |
+| GET    | `/orders`                    | Bearer | default                | My orders: `status`, `from`, `to`, paging      |
+| GET    | `/orders/:code`              | Bearer | default                | One of my orders with items and history        |
+| POST   | `/orders/:code/payment`      | Bearer | default                | Declare a bank transfer (mock payment)         |
+| POST   | `/orders/:code/cancel`       | Bearer | default                | Cancel a PENDING order, stock goes back        |
 | GET    | `/admin/users`               | Admin  | default                | List accounts: `q`, `status`, `role`, paging   |
 | GET    | `/admin/users/:id`           | Admin  | default                | One account + orders count / spent / last      |
 | PATCH  | `/admin/users/:id/status`    | Admin  | default                | Lock (`INACTIVE`) or unlock (`ACTIVE`)         |

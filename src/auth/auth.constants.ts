@@ -2,7 +2,7 @@ import { minutes } from '@nestjs/throttler';
 
 import { trackByIpAndEmail } from '../common/throttling/ip-and-email.tracker';
 import { RouteRateLimit } from '../common/throttling/rate-limit.decorator';
-import { MAIL_JOB, MailJobName } from '../mail/mail.constants';
+import { ActionMailJobName, MAIL_JOB } from '../mail/mail.constants';
 import { UserStatus } from '../users/enums/user-status.enum';
 import { UserTokenType } from '../users/enums/user-token-type.enum';
 
@@ -58,7 +58,7 @@ export const ACCOUNT_STATUS_REJECTIONS: Record<UserStatus, string | undefined> =
 
 export const ACCOUNT_LINKS: Record<
   UserTokenType,
-  { job: MailJobName; path: string }
+  { job: ActionMailJobName; path: string }
 > = {
   [UserTokenType.EmailVerify]: {
     job: MAIL_JOB.VerifyEmail,

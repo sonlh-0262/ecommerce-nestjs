@@ -57,6 +57,7 @@ describe('ProductsService', () => {
     delete: jest.fn(),
     existsBy: jest.fn(),
     getRepository: jest.fn(() => productsRepository),
+    createQueryBuilder: jest.fn(),
   };
   const { dataSource } = transactionalDataSource(
     managerMock as unknown as EntityManager,
@@ -252,6 +253,69 @@ describe('ProductsService', () => {
         new NotFoundException('products.NOT_FOUND'),
       );
       expect(managerMock.update).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('stock', () => {
+    const builder = {
+      withDeleted: jest.fn().mockReturnThis(),
+      where: jest.fn().mockReturnThis(),
+      orderBy: jest.fn().mockReturnThis(),
+      setLock: jest.fn().mockReturnThis(),
+      getMany: jest.fn(),
+      update: jest.fn().mockReturnThis(),
+      set: jest.fn().mockReturnThis(),
+      setParameter: jest.fn().mockReturnThis(),
+      execute: jest.fn(),
+    };
+
+    beforeEach(() => {
+      managerMock.createQueryBuilder.mockReturnValue(builder);
+    });
+
+    it('locks the products for sale in id order, deleted ones included', async () => {
+      builder.getMany.mockResolvedValue([stored()]);
+
+      await expect(
+        service.lockForSale(managerMock as unknown as EntityManager, [
+          'b',
+          'a',
+        ]),
+      ).resolves.toEqual([stored()]);
+      expect(builder.withDeleted).toHaveBeenCalled();
+      expect(builder.where).toHaveBeenCalledWith('product.id IN (:...ids)', {
+        ids: ['b', 'a'],
+      });
+      expect(builder.orderBy).toHaveBeenCalledWith('product.id', 'ASC');
+      expect(builder.setLock).toHaveBeenCalledWith('pessimistic_write');
+      expect(builder.orderBy.mock.invocationCallOrder[0]).toBeLessThan(
+        builder.setLock.mock.invocationCallOrder[0],
+      );
+    });
+
+    it('takes a sale out of the stock and into the sold count', async () => {
+      await service.recordSale(
+        managerMock as unknown as EntityManager,
+        PRODUCT_ID,
+        3,
+      );
+
+      expect(builder.update).toHaveBeenCalledWith(Product);
+      expect(builder.where).toHaveBeenCalledWith('id = :id', {
+        id: PRODUCT_ID,
+      });
+      expect(builder.setParameter).toHaveBeenCalledWith('sold', 3);
+      expect(builder.execute).toHaveBeenCalled();
+    });
+
+    it('puts a restock back into the stock and out of the sold count', async () => {
+      await service.restock(
+        managerMock as unknown as EntityManager,
+        PRODUCT_ID,
+        3,
+      );
+
+      expect(builder.setParameter).toHaveBeenCalledWith('sold', -3);
     });
   });
 });

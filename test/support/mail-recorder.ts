@@ -1,9 +1,9 @@
 import { MailJobInput } from '../../src/mail/interfaces/mail-job.interface';
-import { MailJobName } from '../../src/mail/mail.constants';
+import { ActionMailJobName, MailJobName } from '../../src/mail/mail.constants';
 
-export interface RecordedMail {
-  name: MailJobName;
-  payload: MailJobInput<MailJobName>;
+export interface RecordedMail<T extends MailJobName = MailJobName> {
+  name: T;
+  payload: MailJobInput<T>;
 }
 
 export class MailRecorder {
@@ -18,13 +18,14 @@ export class MailRecorder {
     return Promise.resolve();
   }
 
-  sentTo(email: string, name: MailJobName): RecordedMail[] {
+  sentTo<T extends MailJobName>(email: string, name: T): RecordedMail<T>[] {
     return this.sent.filter(
-      (mail) => mail.name === name && mail.payload.to === email,
+      (mail): mail is RecordedMail<T> =>
+        mail.name === name && mail.payload.to === email,
     );
   }
 
-  tokenSentTo(email: string, name: MailJobName): string {
+  tokenSentTo(email: string, name: ActionMailJobName): string {
     const mail = this.sentTo(email, name).at(-1);
     const token = mail
       ? new URL(mail.payload.actionUrl).searchParams.get('token')

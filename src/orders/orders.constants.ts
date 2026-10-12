@@ -1,3 +1,5 @@
+import { OrderStatus } from './enums/order-status.enum';
+
 export const CODE_MAX_LENGTH = 20;
 export const RECEIVER_NAME_MAX_LENGTH = 100;
 export const RECEIVER_PHONE_MAX_LENGTH = 20;
@@ -43,3 +45,19 @@ export const ORDER_CODE_COUNTERS_SEQ_CHECK = 'CHK_order_code_counters_seq';
 export const ORDER_CODE_COUNTERS_SEQ_EXPRESSION = 'last_seq >= 0';
 
 export const ORDERS_DELIVERED_CONDITION = "status = 'DELIVERED'";
+
+export const ORDER_CODE_TIME_ZONE = 'Asia/Ho_Chi_Minh';
+export const ORDER_CODE_MAX_SEQ = 10 ** ORDER_CODE_SEQ_PADDING - 1;
+
+export const ORDER_PAYABLE_STATUSES: readonly OrderStatus[] = [
+  OrderStatus.Pending,
+  OrderStatus.Confirmed,
+];
+
+export const UNAVAILABLE_ITEM_REASONS = {
+  OutOfStock: 'OUT_OF_STOCK',
+  Unavailable: 'UNAVAILABLE',
+} as const;
+
+export type UnavailableItemReason =
+  (typeof UNAVAILABLE_ITEM_REASONS)[keyof typeof UNAVAILABLE_ITEM_REASONS];

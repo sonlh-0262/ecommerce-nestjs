@@ -1,5 +1,12 @@
 import { ApiProperty } from '@nestjs/swagger';
 
+export type ErrorDetails = Record<string, unknown>;
+
+export interface DetailedErrorBody {
+  message: string;
+  details: ErrorDetails;
+}
+
 export class ErrorBodyDto {
   @ApiProperty({
     type: [String],
@@ -14,6 +21,16 @@ export class ErrorResponseDto {
   errors: ErrorBodyDto;
 }
 
-export function toErrorResponse(messages: string[]): ErrorResponseDto {
-  return { errors: { body: messages } };
+export function withDetails(
+  message: string,
+  details: ErrorDetails,
+): DetailedErrorBody {
+  return { message, details };
+}
+
+export function toErrorResponse(
+  messages: string[],
+  details: ErrorDetails = {},
+): ErrorResponseDto {
+  return { errors: { ...details, body: messages } };
 }

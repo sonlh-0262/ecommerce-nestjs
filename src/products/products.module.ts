@@ -9,6 +9,7 @@ import { ProductImage } from './entities/product-image.entity';
 import { Product } from './entities/product.entity';
 import { ProductImagesAdminController } from './product-images-admin.controller';
 import { ProductImagesService } from './product-images.service';
+import { ProductThumbnailsService } from './product-thumbnails.service';
 import { ProductsAdminController } from './products-admin.controller';
 import { ProductsViewService } from './products-view.service';
 import { ProductsController } from './products.controller';
@@ -26,7 +27,12 @@ import { ProductsService } from './products.service';
     ProductsAdminController,
     ProductImagesAdminController,
   ],
-  providers: [ProductsService, ProductsViewService, ProductImagesService],
-  exports: [ProductsService, ProductImagesService],
+  providers: [
+    ProductsService,
+    ProductsViewService,
+    ProductImagesService,
+    ProductThumbnailsService,
+  ],
+  exports: [ProductsService, ProductImagesService, ProductThumbnailsService],
 })
 export class ProductsModule {}

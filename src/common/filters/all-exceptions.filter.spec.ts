@@ -1,6 +1,7 @@
 import {
   ArgumentsHost,
   BadRequestException,
+  ConflictException,
   ForbiddenException,
   HttpStatus,
   InternalServerErrorException,
@@ -14,7 +15,7 @@ import {
   PG_FOREIGN_KEY_VIOLATION,
   PG_UNIQUE_VIOLATION,
 } from '../../database/database.constants';
-import { ErrorResponseDto } from '../dto/error-response.dto';
+import { ErrorResponseDto, withDetails } from '../dto/error-response.dto';
 import { AllExceptionsFilter } from './all-exceptions.filter';
 
 describe('AllExceptionsFilter', () => {
@@ -79,6 +80,53 @@ describe('AllExceptionsFilter', () => {
       filter.catch(new BadRequestException(['first', 'second']), host);
 
       expect(rendered().body.errors.body).toEqual(['first', 'second']);
+    });
+
+    it('puts the details of a detailed exception beside the messages', () => {
+      filter.catch(
+        new ConflictException(
+          withDetails('cart.INSUFFICIENT_STOCK', { availableStock: 3 }),
+        ),
+        host,
+      );
+
+      expect(rendered()).toEqual({
+        status: HttpStatus.CONFLICT,
+        body: {
+          errors: { body: ['cart.INSUFFICIENT_STOCK'], availableStock: 3 },
+        },
+      });
+    });
+
+    it('never lets a detail replace the messages', () => {
+      filter.catch(
+        new ConflictException(withDetails('kept', { body: ['replaced'] })),
+        host,
+      );
+
+      expect(rendered().body.errors.body).toEqual(['kept']);
+    });
+
+    it('ignores details that are not an object', () => {
+      filter.catch(
+        new ConflictException({ message: 'conflict', details: ['x'] }),
+        host,
+      );
+
+      expect(rendered().body).toEqual({ errors: { body: ['conflict'] } });
+    });
+
+    it('drops the details of a server error with its message', () => {
+      filter.catch(
+        new InternalServerErrorException(
+          withDetails('pool exhausted', { pool: 'main' }),
+        ),
+        host,
+      );
+
+      expect(rendered().body).toEqual({
+        errors: { body: ['common.INTERNAL_ERROR'] },
+      });
     });
 
     it('does not log a client error', () => {

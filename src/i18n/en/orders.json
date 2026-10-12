@@ -1,0 +1,9 @@
+{
+  "NOT_FOUND": "Order not found",
+  "ITEMS_UNAVAILABLE": "Some items are no longer available",
+  "CANNOT_CANCEL": "Only orders awaiting confirmation can be cancelled",
+  "PAYMENT_NOT_APPLICABLE": "This order is not paid by bank transfer",
+  "ALREADY_PAID": "This order has already been paid",
+  "INVALID_STATE": "This action is not allowed in the current order state",
+  "CODE_SEQUENCE_EXHAUSTED": "Too many orders today, please try again later"
+}

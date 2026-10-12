@@ -16,6 +16,7 @@ import {
   MIN_PORT,
   MIN_PRODUCTION_BCRYPT_SALT_ROUNDS,
   MIN_REDIS_DB_INDEX,
+  MIN_SHIPPING_FEE,
   MIN_THROTTLE_VALUE,
   NO_TRAILING_SLASH_PATTERN,
   WEB_URL_SCHEMES,
@@ -68,6 +69,8 @@ export interface EnvironmentVariables {
   APP_WEB_URL?: string;
 
   STORAGE_ROOT?: string;
+
+  SHIPPING_FEE?: number;
 
   SEED_ADMIN_EMAIL?: string;
   SEED_ADMIN_PASSWORD?: string;
@@ -141,6 +144,8 @@ export const envValidationSchema = Joi.object<EnvironmentVariables>({
   ),
 
   STORAGE_ROOT: Joi.string().min(1).optional(),
+
+  SHIPPING_FEE: Joi.number().integer().min(MIN_SHIPPING_FEE).optional(),
 
   SEED_ADMIN_EMAIL: Joi.string().email(EMAIL_OPTIONS).allow('').optional(),
   SEED_ADMIN_PASSWORD: Joi.string()

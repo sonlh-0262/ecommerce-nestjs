@@ -19,6 +19,7 @@ import { UpdateProductBodyDto } from './dto/update-product.dto';
 import { ProductImage } from './entities/product-image.entity';
 import { Product } from './entities/product.entity';
 import { ProductStatus } from './enums/product-status.enum';
+import { PRODUCT_ALIAS } from './products-query.builder';
 import {
   RESERVED_PRODUCT_SLUGS,
   SLUG_MAX_LENGTH,
@@ -150,6 +151,28 @@ export class ProductsService {
     return product;
   }
 
+  lockForSale(manager: EntityManager, ids: string[]): Promise<Product[]> {
+    return manager
+      .createQueryBuilder(Product, PRODUCT_ALIAS)
+      .withDeleted()
+      .where('product.id IN (:...ids)', { ids })
+      .orderBy('product.id', 'ASC')
+      .setLock('pessimistic_write')
+      .getMany();
+  }
+
+  recordSale(
+    manager: EntityManager,
+    id: string,
+    quantity: number,
+  ): Promise<void> {
+    return this.moveStock(manager, id, quantity);
+  }
+
+  restock(manager: EntityManager, id: string, quantity: number): Promise<void> {
+    return this.moveStock(manager, id, -quantity);
+  }
+
   invalidateCache(): Promise<void> {
     return this.cache.invalidate(
       CACHE_RESOURCES.products,
@@ -174,6 +197,23 @@ export class ProductsService {
         this.i18n.t('products.SALE_PRICE_TOO_HIGH'),
       );
     }
+  }
+
+  private async moveStock(
+    manager: EntityManager,
+    id: string,
+    sold: number,
+  ): Promise<void> {
+    await manager
+      .createQueryBuilder()
+      .update(Product)
+      .set({
+        stock: () => 'stock - :sold',
+        soldCount: () => 'sold_count + :sold',
+      })
+      .where('id = :id', { id })
+      .setParameter('sold', sold)
+      .execute();
   }
 
   private noImages(): UnprocessableEntityException {

@@ -59,3 +59,6 @@ export const WEB_URL_SCHEMES = ['http', 'https'];
 export const NO_TRAILING_SLASH_PATTERN = /[^/]$/;
 
 export const DEFAULT_STORAGE_ROOT = './storage';
+
+export const DEFAULT_SHIPPING_FEE = 30000;
+export const MIN_SHIPPING_FEE = 0;

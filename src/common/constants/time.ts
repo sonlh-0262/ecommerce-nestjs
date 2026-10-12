@@ -1,3 +1,5 @@
-export const MILLISECONDS_PER_MINUTE = 60 * 1000;
+export const SECONDS_PER_MINUTE = 60;
+
+export const MILLISECONDS_PER_MINUTE = SECONDS_PER_MINUTE * 1000;
 
 export const MINUTES_PER_HOUR = 60;

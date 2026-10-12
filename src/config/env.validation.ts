@@ -2,6 +2,11 @@ import * as Joi from 'joi';
 
 import { SUPPORTED_LANGUAGES } from '../common/constants/languages';
 import {
+  PASSWORD_MAX_LENGTH,
+  PASSWORD_MIN_LENGTH,
+  PASSWORD_STRENGTH_PATTERN,
+} from '../users/users.constants';
+import {
   JWT_DURATION_PATTERN,
   MAX_BCRYPT_SALT_ROUNDS,
   MAX_PORT,
@@ -63,6 +68,9 @@ export interface EnvironmentVariables {
   APP_WEB_URL?: string;
 
   STORAGE_ROOT?: string;
+
+  SEED_ADMIN_EMAIL?: string;
+  SEED_ADMIN_PASSWORD?: string;
 }
 
 const requiredInProduction = <T extends Joi.Schema>(schema: T): T =>
@@ -133,4 +141,12 @@ export const envValidationSchema = Joi.object<EnvironmentVariables>({
   ),
 
   STORAGE_ROOT: Joi.string().min(1).optional(),
+
+  SEED_ADMIN_EMAIL: Joi.string().email(EMAIL_OPTIONS).allow('').optional(),
+  SEED_ADMIN_PASSWORD: Joi.string()
+    .min(PASSWORD_MIN_LENGTH)
+    .max(PASSWORD_MAX_LENGTH)
+    .pattern(PASSWORD_STRENGTH_PATTERN)
+    .allow('')
+    .optional(),
 }).unknown(true);

@@ -1,3 +1,6 @@
+import { ImageUploadSpec } from '../attachments/interfaces/image-upload-spec.interface';
+import { SECONDS_PER_MINUTE } from '../common/constants/time';
+
 export const NAME_MAX_LENGTH = 255;
 export const SLUG_MAX_LENGTH = 280;
 
@@ -44,3 +47,40 @@ export const PRODUCTS_FEATURED_CONDITION =
 export const UNIQUE_PRODUCT_IMAGES_THUMBNAIL_INDEX =
   'UQ_product_images_thumbnail';
 export const PRODUCT_IMAGES_THUMBNAIL_CONDITION = 'is_thumbnail';
+
+export const NAME_MIN_LENGTH = 1;
+export const DESCRIPTION_MAX_LENGTH = 5000;
+export const MAX_PRICE = Number.MAX_SAFE_INTEGER;
+
+export const PRODUCT_SEARCH_MAX_LENGTH = 100;
+
+export const PRODUCT_SORTS = [
+  'newest',
+  'price_asc',
+  'price_desc',
+  'best_selling',
+  'rating',
+] as const;
+
+export type ProductSort = (typeof PRODUCT_SORTS)[number];
+
+export const DEFAULT_PRODUCT_SORT: ProductSort = 'newest';
+
+export const FEATURED_PRODUCTS_ROUTE = 'featured';
+
+export const RESERVED_PRODUCT_SLUGS = [FEATURED_PRODUCTS_ROUTE];
+
+export const FEATURED_PRODUCTS_DEFAULT_LIMIT = 10;
+
+export const FEATURED_PRODUCTS_CACHE_TTL_SECONDS = 5 * SECONDS_PER_MINUTE;
+
+export const MIN_PRICE = 0;
+export const MIN_STOCK = 0;
+
+export const MAX_PRODUCT_IMAGES = 5;
+
+export const PRODUCT_IMAGES_UPLOAD: ImageUploadSpec = {
+  field: 'files',
+  maxFiles: MAX_PRODUCT_IMAGES,
+  textFields: 1,
+};

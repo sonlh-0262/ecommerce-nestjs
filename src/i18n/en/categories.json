@@ -1,0 +1,9 @@
+{
+  "NOT_FOUND": "Category not found",
+  "PARENT_NOT_FOUND": "The parent category does not exist",
+  "PARENT_IS_SELF": "A category cannot be its own parent",
+  "MAX_DEPTH_EXCEEDED": "Categories support at most {maxDepth} levels",
+  "HAS_PRODUCTS": "This category still has products",
+  "HAS_CHILDREN": "This category still has sub-categories",
+  "NAME_TAKEN": "A category with this name already exists at this level"
+}

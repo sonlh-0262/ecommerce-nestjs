@@ -1,6 +1,7 @@
 import {
   Logger,
   NotFoundException,
+  UnauthorizedException,
   UnprocessableEntityException,
 } from '@nestjs/common';
 import { StreamableHandlerResponse } from '@nestjs/common/file-stream/interfaces';
@@ -11,6 +12,11 @@ import { EntityManager, In, Repository } from 'typeorm';
 
 import { AppConfig } from '../config/configuration';
 import { TransactionHooks } from '../database/transaction-hooks.service';
+import { buildUser } from '../users/entities/user.fixture';
+import {
+  ATTACHMENT_CACHE_CONTROL,
+  PUBLIC_ATTACHMENT_CACHE_CONTROL,
+} from './attachments.constants';
 import { AttachmentsService } from './attachments.service';
 import { Attachment } from './entities/attachment.entity';
 import { AttachableType } from './enums/attachable-type.enum';
@@ -299,7 +305,7 @@ describe('AttachmentsService', () => {
     it('streams the stored file with the headers it belongs to', async () => {
       repositoryMock.findOne.mockResolvedValue(buildAttachment());
 
-      const file = await service.download('attachment-id');
+      const file = await service.download('attachment-id', null);
 
       expect(file.getStream()).toBeInstanceOf(Readable);
       expect(file.getHeaders()).toEqual({
@@ -316,7 +322,7 @@ describe('AttachmentsService', () => {
       repositoryMock.findOne.mockResolvedValue(buildAttachment());
       const response = { end: jest.fn() };
 
-      const file = await service.download('attachment-id');
+      const file = await service.download('attachment-id', null);
       file.errorHandler(
         new Error('disk died'),
         response as unknown as StreamableHandlerResponse,
@@ -331,7 +337,7 @@ describe('AttachmentsService', () => {
     it('answers an unknown id with 404', async () => {
       repositoryMock.findOne.mockResolvedValue(null);
 
-      await expect(service.download('missing')).rejects.toBeInstanceOf(
+      await expect(service.download('missing', null)).rejects.toBeInstanceOf(
         NotFoundException,
       );
     });
@@ -340,9 +346,40 @@ describe('AttachmentsService', () => {
       repositoryMock.findOne.mockResolvedValue(buildAttachment());
       storageMock.openReadStream.mockResolvedValue(null);
 
-      await expect(service.download('attachment-id')).rejects.toBeInstanceOf(
-        NotFoundException,
+      await expect(
+        service.download('attachment-id', null),
+      ).rejects.toBeInstanceOf(NotFoundException);
+    });
+
+    it('serves a product image publicly, without a viewer', async () => {
+      repositoryMock.findOne.mockResolvedValue(
+        buildAttachment({ attachableType: AttachableType.Product }),
       );
+
+      const file = await service.download('attachment-id', null);
+
+      expect(file.cacheControl).toBe(PUBLIC_ATTACHMENT_CACHE_CONTROL);
+    });
+
+    it('refuses an anonymous caller a file that is not public', async () => {
+      repositoryMock.findOne.mockResolvedValue(
+        buildAttachment({ attachableType: AttachableType.User }),
+      );
+
+      await expect(
+        service.download('attachment-id', null),
+      ).rejects.toBeInstanceOf(UnauthorizedException);
+      expect(storageMock.openReadStream).not.toHaveBeenCalled();
+    });
+
+    it('serves a private file to a signed-in caller, cached privately', async () => {
+      repositoryMock.findOne.mockResolvedValue(
+        buildAttachment({ attachableType: AttachableType.User }),
+      );
+
+      const file = await service.download('attachment-id', buildUser());
+
+      expect(file.cacheControl).toBe(ATTACHMENT_CACHE_CONTROL);
     });
   });
 

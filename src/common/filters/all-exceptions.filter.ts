@@ -15,7 +15,7 @@ import {
   PG_FOREIGN_KEY_VIOLATION,
   PG_UNIQUE_VIOLATION,
 } from '../../database/database.constants';
-import { toErrorResponse } from '../dto/error-response.dto';
+import { ErrorDetails, toErrorResponse } from '../dto/error-response.dto';
 
 const FIRST_CLIENT_ERROR: number = HttpStatus.BAD_REQUEST;
 const FIRST_SERVER_ERROR: number = HttpStatus.INTERNAL_SERVER_ERROR;
@@ -23,6 +23,7 @@ const FIRST_SERVER_ERROR: number = HttpStatus.INTERNAL_SERVER_ERROR;
 interface ResolvedError {
   status: number;
   messages: string[];
+  details?: ErrorDetails;
 }
 
 interface QueryFailure {
@@ -60,7 +61,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
 
   catch(exception: unknown, host: ArgumentsHost): void {
     const response = host.switchToHttp().getResponse<Response>();
-    const { status, messages } = this.resolve(exception, host);
+    const { status, messages, details } = this.resolve(exception, host);
 
     if (response.headersSent) {
       this.logger.error(
@@ -71,7 +72,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
       return;
     }
 
-    response.status(status).json(toErrorResponse(messages));
+    response.status(status).json(toErrorResponse(messages, details));
   }
 
   private resolve(exception: unknown, host: ArgumentsHost): ResolvedError {
@@ -87,7 +88,11 @@ export class AllExceptionsFilter implements ExceptionFilter {
         };
       }
 
-      return { status, messages: messagesOf(exception) };
+      return {
+        status,
+        messages: messagesOf(exception),
+        details: detailsOf(exception),
+      };
     }
 
     if (exception instanceof QueryFailedError) {
@@ -163,6 +168,22 @@ function messagesOf(exception: HttpException): string[] {
   }
 
   return [typeof message === 'string' ? message : exception.message];
+}
+
+function detailsOf(exception: HttpException): ErrorDetails | undefined {
+  const response = exception.getResponse();
+
+  if (typeof response !== 'object') {
+    return undefined;
+  }
+
+  const { details } = response as { details?: unknown };
+
+  return typeof details === 'object' &&
+    details !== null &&
+    !Array.isArray(details)
+    ? (details as ErrorDetails)
+    : undefined;
 }
 
 function exposedClientStatus(exception: unknown): number | null {

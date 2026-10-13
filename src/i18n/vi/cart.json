@@ -1,0 +1,7 @@
+{
+  "OUT_OF_STOCK": "Sản phẩm đã hết hàng",
+  "INSUFFICIENT_STOCK": "Chỉ còn {available} sản phẩm trong kho",
+  "ITEM_NOT_FOUND": "Không tìm thấy sản phẩm trong giỏ hàng",
+  "EMPTY": "Giỏ hàng của bạn đang trống",
+  "QUANTITY_LIMIT": "Mỗi sản phẩm chỉ được thêm tối đa {limit} cái vào giỏ hàng"
+}

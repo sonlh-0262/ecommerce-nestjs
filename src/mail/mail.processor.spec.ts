@@ -5,8 +5,16 @@ import { UnrecoverableError } from 'bullmq';
 import { I18nService } from 'nestjs-i18n';
 
 import { MailConfig } from '../config/mail.config';
-import { ActionMailJob } from './interfaces/mail-job.interface';
-import { MAIL_ACTION_TEMPLATE, MAIL_JOB, MailJobName } from './mail.constants';
+import {
+  ActionMailJob,
+  OrderCreatedMailJob,
+} from './interfaces/mail-job.interface';
+import {
+  MAIL_ACTION_TEMPLATE,
+  MAIL_JOB,
+  MAIL_ORDER_CREATED_TEMPLATE,
+  MailJobName,
+} from './mail.constants';
 import { MailJob, MailProcessor } from './mail.processor';
 
 interface SentMail {
@@ -143,6 +151,68 @@ describe('MailProcessor', () => {
       processor.process(jobOf(MAIL_JOB.VerifyEmail)),
     ).rejects.toThrow('ECONNREFUSED');
     expect(logError).toHaveBeenCalled();
+  });
+
+  describe(MAIL_JOB.OrderCreated, () => {
+    const order = (lang: OrderCreatedMailJob['lang']): OrderCreatedMailJob => ({
+      to: 'son@example.com',
+      lang,
+      fullName: 'Lanh Hung Son',
+      orderCode: 'ORD-20261005-0001',
+      items: [{ name: 'Áo thun', quantity: 2, lineTotal: 300000 }],
+      subtotal: 300000,
+      shippingFee: 30000,
+      total: 330000,
+      shippingAddress: '1 Nguyen Trai, Ha Noi',
+    });
+
+    const orderJob = (lang: OrderCreatedMailJob['lang']) =>
+      ({
+        id: '43',
+        name: MAIL_JOB.OrderCreated,
+        data: order(lang),
+        attemptsMade: 0,
+      }) as unknown as MailJob;
+
+    it('renders the order template with the code in the subject', async () => {
+      await processor.process(orderJob('vi'));
+
+      expect(sent()).toMatchObject({
+        to: 'son@example.com',
+        subject: 'vi:mail.ORDER_CREATED.SUBJECT{"code":"ORD-20261005-0001"}',
+        template: MAIL_ORDER_CREATED_TEMPLATE,
+      });
+      expect(sent().context).toMatchObject({
+        greeting: 'vi:mail.GREETING{"name":"Lanh Hung Son"}',
+        intro: 'vi:mail.ORDER_CREATED.INTRO{"code":"ORD-20261005-0001"}',
+        shippingAddress: '1 Nguyen Trai, Ha Noi',
+        labels: {
+          product: 'vi:mail.ORDER_CREATED.PRODUCT',
+          total: 'vi:mail.ORDER_CREATED.TOTAL',
+        },
+      });
+    });
+
+    it('writes every amount in VND for the reader', async () => {
+      await processor.process(orderJob('vi'));
+
+      const context = JSON.parse(
+        JSON.stringify(sent().context).replace(/\u00a0/g, ' '),
+      ) as Record<string, unknown>;
+
+      expect(context).toMatchObject({
+        items: [{ name: 'Áo thun', quantity: 2, lineTotal: '300.000 ₫' }],
+        subtotal: '300.000 ₫',
+        shippingFee: '30.000 ₫',
+        total: '330.000 ₫',
+      });
+    });
+
+    it('formats the amounts the English way for an English reader', async () => {
+      await processor.process(orderJob('en'));
+
+      expect(sent().context.total).toBe('₫330,000');
+    });
   });
 
   it('refuses a job name it does not know without retrying', async () => {

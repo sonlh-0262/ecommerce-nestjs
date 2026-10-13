@@ -17,6 +17,7 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AttachmentsModule } from './attachments/attachments.module';
 import { AuthModule } from './auth/auth.module';
+import { CartModule } from './cart/cart.module';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
 import { CategoriesModule } from './categories/categories.module';
 import {
@@ -36,6 +37,7 @@ import databaseConfig from './config/database.config';
 import { envFilePaths } from './config/env-files';
 import { envValidationSchema } from './config/env.validation';
 import mailConfig from './config/mail.config';
+import ordersConfig from './config/orders.config';
 import redisConfig, {
   REDIS_CONFIG_KEY,
   RedisConfig,
@@ -49,6 +51,7 @@ import throttleConfig, {
 import { buildThrottlerOptions } from './config/throttler-options';
 import { DatabaseModule } from './database/database.module';
 import { MailModule } from './mail/mail.module';
+import { OrdersModule } from './orders/orders.module';
 import { ProductsModule } from './products/products.module';
 import { REDIS_CLIENT } from './redis/redis.constants';
 import { RedisModule } from './redis/redis.module';
@@ -68,6 +71,7 @@ import { UsersModule } from './users/users.module';
         mailConfig,
         storageConfig,
         seedConfig,
+        ordersConfig,
       ],
       validationSchema: envValidationSchema,
       validationOptions: { abortEarly: false },
@@ -125,6 +129,8 @@ import { UsersModule } from './users/users.module';
     AuthModule,
     CategoriesModule,
     ProductsModule,
+    CartModule,
+    OrdersModule,
   ],
   controllers: [AppController],
   providers: [

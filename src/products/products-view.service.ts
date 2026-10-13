@@ -22,6 +22,7 @@ import {
 import { ProductImage } from './entities/product-image.entity';
 import { Product } from './entities/product.entity';
 import { ProductStatus } from './enums/product-status.enum';
+import { ProductThumbnailsService } from './product-thumbnails.service';
 import { FEATURED_PRODUCTS_CACHE_TTL_SECONDS } from './products.constants';
 import {
   filterProducts,
@@ -38,6 +39,7 @@ export class ProductsViewService {
     private readonly imagesRepository: Repository<ProductImage>,
     @InjectRepository(Category)
     private readonly categoriesRepository: Repository<Category>,
+    private readonly thumbnails: ProductThumbnailsService,
     private readonly cache: CacheService,
     private readonly i18n: I18nService,
   ) {}
@@ -142,20 +144,13 @@ export class ProductsViewService {
       return [];
     }
 
-    const productIds = products.map(({ id }) => id);
     const categoryIds = [...new Set(products.map((p) => p.categoryId))];
 
-    const [thumbnails, categories] = await Promise.all([
-      this.imagesRepository.find({
-        where: { productId: In(productIds), isThumbnail: true },
-        relations: { attachment: true },
-      }),
+    const [thumbnailUrls, categories] = await Promise.all([
+      this.thumbnails.urlsOf(products.map(({ id }) => id)),
       this.categoriesRepository.findBy({ id: In(categoryIds) }),
     ]);
 
-    const thumbnailUrls = new Map(
-      thumbnails.map((image) => [image.productId, image.attachment.url]),
-    );
     const categoriesById = new Map(categories.map((c) => [c.id, c]));
 
     return products.map((product) =>

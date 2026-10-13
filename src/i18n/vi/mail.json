@@ -14,5 +14,16 @@
     "INTRO": "Chúng tôi nhận được yêu cầu đặt lại mật khẩu cho tài khoản của bạn.",
     "ACTION": "Đặt lại mật khẩu",
     "EXPIRY": "Liên kết có hiệu lực trong {duration} và chỉ dùng được một lần."
+  },
+  "ORDER_CREATED": {
+    "SUBJECT": "Đơn hàng {code} đã được đặt",
+    "INTRO": "Cảm ơn bạn đã đặt hàng. Chúng tôi đã nhận đơn {code} và sẽ xác nhận trong thời gian sớm nhất.",
+    "PRODUCT": "Sản phẩm",
+    "QUANTITY": "Số lượng",
+    "LINE_TOTAL": "Thành tiền",
+    "SUBTOTAL": "Tạm tính",
+    "SHIPPING_FEE": "Phí vận chuyển",
+    "TOTAL": "Tổng cộng",
+    "SHIPPING_ADDRESS": "Địa chỉ nhận hàng"
   }
 }

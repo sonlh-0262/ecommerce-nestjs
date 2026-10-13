@@ -11,6 +11,7 @@ export const VALIDATION_MESSAGES = {
   isNumber: translated('IS_NUMBER'),
   isBoolean: translated('IS_BOOLEAN'),
   isUuid: translated('IS_UUID'),
+  isDate: translated('IS_DATE'),
   isIn: translated('IS_IN'),
   isObject: translated('IS_OBJECT'),
   min: translated('MIN'),

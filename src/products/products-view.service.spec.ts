@@ -13,6 +13,7 @@ import {
 import { ProductImage } from './entities/product-image.entity';
 import { Product } from './entities/product.entity';
 import { ProductStatus } from './enums/product-status.enum';
+import { ProductThumbnailsService } from './product-thumbnails.service';
 import {
   FEATURED_PRODUCTS_CACHE_TTL_SECONDS,
   FEATURED_PRODUCTS_DEFAULT_LIMIT,
@@ -92,6 +93,9 @@ describe('ProductsViewService', () => {
       productsRepository as unknown as Repository<Product>,
       imagesRepository as unknown as Repository<ProductImage>,
       categoriesRepository as unknown as Repository<Category>,
+      new ProductThumbnailsService(
+        imagesRepository as unknown as Repository<ProductImage>,
+      ),
       cacheMock as unknown as CacheService,
       i18nMock as unknown as I18nService,
     );

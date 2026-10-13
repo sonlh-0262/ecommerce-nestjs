@@ -1,0 +1,35 @@
+<p>{{greeting}}</p>
+<p>{{intro}}</p>
+<table role="presentation" width="100%" cellpadding="8" cellspacing="0" style="border-collapse:collapse;margin:16px 0;font-size:14px;">
+  <thead>
+    <tr style="background:#f3f4f6;text-align:left;">
+      <th>{{labels.product}}</th>
+      <th style="text-align:center;">{{labels.quantity}}</th>
+      <th style="text-align:right;">{{labels.lineTotal}}</th>
+    </tr>
+  </thead>
+  <tbody>
+    {{#each items}}
+      <tr style="border-bottom:1px solid #e5e7eb;">
+        <td>{{name}}</td>
+        <td style="text-align:center;">{{quantity}}</td>
+        <td style="text-align:right;">{{lineTotal}}</td>
+      </tr>
+    {{/each}}
+  </tbody>
+  <tfoot>
+    <tr>
+      <td colspan="2" style="text-align:right;">{{labels.subtotal}}</td>
+      <td style="text-align:right;">{{subtotal}}</td>
+    </tr>
+    <tr>
+      <td colspan="2" style="text-align:right;">{{labels.shippingFee}}</td>
+      <td style="text-align:right;">{{shippingFee}}</td>
+    </tr>
+    <tr style="font-weight:bold;">
+      <td colspan="2" style="text-align:right;">{{labels.total}}</td>
+      <td style="text-align:right;">{{total}}</td>
+    </tr>
+  </tfoot>
+</table>
+<p><strong>{{labels.shippingAddress}}:</strong> {{shippingAddress}}</p>

@@ -1,0 +1,9 @@
+{
+  "NOT_FOUND": "Không tìm thấy đơn hàng",
+  "ITEMS_UNAVAILABLE": "Một số sản phẩm không còn đặt được",
+  "CANNOT_CANCEL": "Chỉ hủy được đơn hàng đang chờ xác nhận",
+  "PAYMENT_NOT_APPLICABLE": "Đơn hàng này không thanh toán bằng chuyển khoản",
+  "ALREADY_PAID": "Đơn hàng này đã được thanh toán",
+  "INVALID_STATE": "Không thể thực hiện thao tác này ở trạng thái hiện tại của đơn hàng",
+  "CODE_SEQUENCE_EXHAUSTED": "Hôm nay có quá nhiều đơn hàng, vui lòng thử lại sau"
+}

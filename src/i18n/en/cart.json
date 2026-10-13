@@ -1,0 +1,7 @@
+{
+  "OUT_OF_STOCK": "This product is out of stock",
+  "INSUFFICIENT_STOCK": "Only {available} item(s) left in stock",
+  "ITEM_NOT_FOUND": "Cart item not found",
+  "EMPTY": "Your cart is empty",
+  "QUANTITY_LIMIT": "You can have at most {limit} of a product in your cart"
+}

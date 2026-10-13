@@ -168,4 +168,16 @@ describe('envValidationSchema', () => {
       expect(error?.message).toContain('REDIS_DB');
     });
   });
+
+  describe('SHIPPING_FEE', () => {
+    it.each(['0', '30000'])('accepts %s VND', (fee) => {
+      expect(validate({ SHIPPING_FEE: fee }).error).toBeUndefined();
+    });
+
+    it.each(['-1', '1500.5', 'free'])('rejects %s', (fee) => {
+      expect(validate({ SHIPPING_FEE: fee }).error?.message).toContain(
+        'SHIPPING_FEE',
+      );
+    });
+  });
 });

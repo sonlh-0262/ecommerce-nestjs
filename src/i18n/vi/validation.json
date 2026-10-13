@@ -19,5 +19,6 @@
   "IS_UUID": "{property} phải là UUID",
   "PHONE_FORMAT": "{property} chỉ được chứa chữ số, khoảng trắng và + - ( )",
   "AT_LEAST_ONE_FIELD": "{property} phải có ít nhất một trường",
-  "IS_IN": "{property} phải là một trong các giá trị: {constraints.0}"
+  "IS_IN": "{property} phải là một trong các giá trị: {constraints.0}",
+  "IS_DATE": "{property} phải là ngày theo định dạng ISO 8601"
 }

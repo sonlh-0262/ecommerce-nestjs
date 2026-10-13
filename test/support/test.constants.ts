@@ -59,3 +59,10 @@ export const ADMIN_CATEGORIES_PATH = `${API_BASE_PATH}/admin/categories`;
 export const PRODUCTS_PATH = `${API_BASE_PATH}/products`;
 
 export const ADMIN_PRODUCTS_PATH = `${API_BASE_PATH}/admin/products`;
+
+export const CART_PATHS = {
+  cart: `${API_BASE_PATH}/cart`,
+  items: `${API_BASE_PATH}/cart/items`,
+} as const;
+
+export const ORDERS_PATH = `${API_BASE_PATH}/orders`;

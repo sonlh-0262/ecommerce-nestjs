@@ -14,5 +14,16 @@
     "INTRO": "We received a request to reset the password of your account.",
     "ACTION": "Reset password",
     "EXPIRY": "This link expires in {duration} and can be used once."
+  },
+  "ORDER_CREATED": {
+    "SUBJECT": "Order {code} has been placed",
+    "INTRO": "Thank you for your order. We have received order {code} and will confirm it shortly.",
+    "PRODUCT": "Product",
+    "QUANTITY": "Quantity",
+    "LINE_TOTAL": "Amount",
+    "SUBTOTAL": "Subtotal",
+    "SHIPPING_FEE": "Shipping fee",
+    "TOTAL": "Total",
+    "SHIPPING_ADDRESS": "Shipping address"
   }
 }

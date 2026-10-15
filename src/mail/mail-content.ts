@@ -11,6 +11,7 @@ import {
   GreetedMailJob,
   MailJobPayloadMap,
   OrderCreatedMailJob,
+  OrderStatusChangedMailJob,
 } from './interfaces/mail-job.interface';
 import {
   MAIL_ACTION_TEMPLATE,
@@ -19,6 +20,7 @@ import {
   MAIL_JOB,
   MAIL_ORDER_CREATED_TEMPLATE,
   MAIL_ORDER_LABEL_KEYS,
+  MAIL_ORDER_STATUS_CHANGED_TEMPLATE,
   MailJobName,
 } from './mail.constants';
 
@@ -32,6 +34,7 @@ const MAIL_COMPOSERS: { [K in MailJobName]: MailComposer<K> } = {
   [MAIL_JOB.VerifyEmail]: composeActionMail,
   [MAIL_JOB.ResetPassword]: composeActionMail,
   [MAIL_JOB.OrderCreated]: composeOrderCreatedMail,
+  [MAIL_JOB.OrderStatusChanged]: composeOrderStatusChangedMail,
 };
 
 export function composeMail<T extends MailJobName>(
@@ -137,6 +140,26 @@ function composeOrderCreatedMail(
       shippingFee: money(job.shippingFee),
       total: money(job.total),
       shippingAddress: job.shippingAddress,
+    },
+  };
+}
+
+function composeOrderStatusChangedMail(
+  copy: string,
+  job: OrderStatusChangedMailJob,
+  t: MailTranslator,
+): MailContent {
+  const statusCopy = `${copy}.${job.status}`;
+  const subject = t(`${statusCopy}.SUBJECT`, { code: job.orderCode });
+
+  return {
+    subject,
+    template: MAIL_ORDER_STATUS_CHANGED_TEMPLATE,
+    context: {
+      ...frameOf(subject, job, t),
+      intro: t(`${statusCopy}.INTRO`, { code: job.orderCode }),
+      reasonLabel: t(`${copy}.REASON`),
+      reason: job.reason,
     },
   };
 }

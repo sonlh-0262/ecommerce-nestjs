@@ -14,6 +14,7 @@ import { CategoriesService } from '../categories/categories.service';
 import { CACHE_RESOURCES } from '../common/constants/cache-keys';
 import { definedFields } from '../common/helpers/defined-fields';
 import { saveWithUniqueSlug } from '../common/helpers/slug';
+import { Review } from '../reviews/entities/review.entity';
 import { CreateProductBodyDto } from './dto/create-product.dto';
 import { UpdateProductBodyDto } from './dto/update-product.dto';
 import { ProductImage } from './entities/product-image.entity';
@@ -21,6 +22,7 @@ import { Product } from './entities/product.entity';
 import { ProductStatus } from './enums/product-status.enum';
 import { PRODUCT_ALIAS } from './products-query.builder';
 import {
+  RATING_AVERAGE_EXPRESSION,
   RESERVED_PRODUCT_SLUGS,
   SLUG_MAX_LENGTH,
   UNIQUE_PRODUCTS_SLUG_INDEX,
@@ -171,6 +173,35 @@ export class ProductsService {
 
   restock(manager: EntityManager, id: string, quantity: number): Promise<void> {
     return this.moveStock(manager, id, -quantity);
+  }
+
+  async refreshRating(manager: EntityManager, id: string): Promise<void> {
+    await manager.findOne(Product, {
+      select: { id: true },
+      where: { id },
+      withDeleted: true,
+      lock: { mode: 'for_no_key_update' },
+    });
+
+    const ofReviews = (expression: string) =>
+      manager
+        .createQueryBuilder()
+        .subQuery()
+        .select(expression)
+        .from(Review, 'review')
+        .where('review.productId = :id')
+        .getQuery();
+
+    await manager
+      .createQueryBuilder()
+      .update(Product)
+      .set({
+        reviewCount: () => ofReviews('COUNT(*)'),
+        averageRating: () =>
+          `COALESCE(${ofReviews(RATING_AVERAGE_EXPRESSION)}, 0)`,
+      })
+      .where('id = :id', { id })
+      .execute();
   }
 
   invalidateCache(): Promise<void> {

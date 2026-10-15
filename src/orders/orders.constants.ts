@@ -54,6 +54,16 @@ export const ORDER_PAYABLE_STATUSES: readonly OrderStatus[] = [
   OrderStatus.Confirmed,
 ];
 
+export const ADMIN_SETTABLE_ORDER_STATUSES = [
+  OrderStatus.Confirmed,
+  OrderStatus.Shipping,
+  OrderStatus.Delivered,
+  OrderStatus.Rejected,
+] as const;
+
+export type AdminSettableOrderStatus =
+  (typeof ADMIN_SETTABLE_ORDER_STATUSES)[number];
+
 export const UNAVAILABLE_ITEM_REASONS = {
   OutOfStock: 'OUT_OF_STOCK',
   Unavailable: 'UNAVAILABLE',

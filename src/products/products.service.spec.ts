@@ -11,6 +11,7 @@ import { CartItem } from '../cart/entities/cart-item.entity';
 import { CategoriesService } from '../categories/categories.service';
 import { CACHE_RESOURCES } from '../common/constants/cache-keys';
 import { transactionalDataSource } from '../database/transaction.fixture';
+import { Review } from '../reviews/entities/review.entity';
 import { CreateProductBodyDto } from './dto/create-product.dto';
 import { ProductImage } from './entities/product-image.entity';
 import { Product } from './entities/product.entity';
@@ -316,6 +317,66 @@ describe('ProductsService', () => {
       );
 
       expect(builder.setParameter).toHaveBeenCalledWith('sold', -3);
+    });
+  });
+
+  describe('refreshRating', () => {
+    const select = jest.fn<unknown, [string]>().mockReturnThis();
+    const builder = {
+      subQuery: jest.fn().mockReturnThis(),
+      select,
+      from: jest.fn().mockReturnThis(),
+      where: jest.fn().mockReturnThis(),
+      getQuery: jest.fn(
+        (): string => `(${String(select.mock.lastCall?.[0])} FROM reviews)`,
+      ),
+      update: jest.fn().mockReturnThis(),
+      set: jest.fn().mockReturnThis(),
+      execute: jest.fn(),
+    };
+
+    beforeEach(() => {
+      managerMock.createQueryBuilder.mockReturnValue(builder);
+    });
+
+    it('locks the product, deleted or not, before recounting its reviews', async () => {
+      await service.refreshRating(
+        managerMock as unknown as EntityManager,
+        PRODUCT_ID,
+      );
+
+      expect(managerMock.findOne).toHaveBeenCalledWith(Product, {
+        select: { id: true },
+        where: { id: PRODUCT_ID },
+        withDeleted: true,
+        lock: { mode: 'for_no_key_update' },
+      });
+      expect(managerMock.findOne.mock.invocationCallOrder[0]).toBeLessThan(
+        builder.execute.mock.invocationCallOrder[0],
+      );
+    });
+
+    it('recomputes both columns from the reviews in one statement', async () => {
+      await service.refreshRating(
+        managerMock as unknown as EntityManager,
+        PRODUCT_ID,
+      );
+
+      const [[columns]] = builder.set.mock.calls as [
+        [Record<'reviewCount' | 'averageRating', () => string>],
+      ];
+
+      expect(builder.update).toHaveBeenCalledWith(Product);
+      expect(columns.reviewCount()).toBe('(COUNT(*) FROM reviews)');
+      expect(columns.averageRating()).toBe(
+        'COALESCE((AVG(review.rating)::numeric(3, 2) FROM reviews), 0)',
+      );
+      expect(builder.from).toHaveBeenCalledWith(Review, 'review');
+      expect(builder.where).toHaveBeenCalledWith('review.productId = :id');
+      expect(builder.where).toHaveBeenCalledWith('id = :id', {
+        id: PRODUCT_ID,
+      });
+      expect(builder.execute).toHaveBeenCalledTimes(1);
     });
   });
 });

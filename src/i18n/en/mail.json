@@ -25,5 +25,16 @@
     "SHIPPING_FEE": "Shipping fee",
     "TOTAL": "Total",
     "SHIPPING_ADDRESS": "Shipping address"
+  },
+  "ORDER_STATUS_CHANGED": {
+    "CONFIRMED": {
+      "SUBJECT": "Order {code} has been confirmed",
+      "INTRO": "Good news: order {code} has been confirmed and is being prepared for shipping."
+    },
+    "REJECTED": {
+      "SUBJECT": "Order {code} has been rejected",
+      "INTRO": "We are sorry, order {code} has been rejected and will not be shipped."
+    },
+    "REASON": "Reason"
   }
 }

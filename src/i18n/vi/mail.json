@@ -25,5 +25,16 @@
     "SHIPPING_FEE": "Phí vận chuyển",
     "TOTAL": "Tổng cộng",
     "SHIPPING_ADDRESS": "Địa chỉ nhận hàng"
+  },
+  "ORDER_STATUS_CHANGED": {
+    "CONFIRMED": {
+      "SUBJECT": "Đơn hàng {code} đã được xác nhận",
+      "INTRO": "Đơn hàng {code} đã được xác nhận và đang được chuẩn bị để giao."
+    },
+    "REJECTED": {
+      "SUBJECT": "Đơn hàng {code} đã bị từ chối",
+      "INTRO": "Rất tiếc, đơn hàng {code} đã bị từ chối và sẽ không được giao."
+    },
+    "REASON": "Lý do"
   }
 }

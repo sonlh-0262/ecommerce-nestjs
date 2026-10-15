@@ -10,3 +10,7 @@ export function escapeLike(value: string): string {
 export function containsPattern(value: string): string {
   return `%${escapeLike(value)}%`;
 }
+
+export function prefixPattern(value: string): string {
+  return `${escapeLike(value)}%`;
+}

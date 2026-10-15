@@ -3,6 +3,8 @@ import { I18nService } from 'nestjs-i18n';
 import { In, Repository } from 'typeorm';
 
 import { ProductThumbnailsService } from '../products/product-thumbnails.service';
+import { User } from '../users/entities/user.entity';
+import { AdminOrdersQueryDto } from './dto/admin-orders-query.dto';
 import { OrdersQueryDto } from './dto/orders-query.dto';
 import { OrderItem } from './entities/order-item.entity';
 import { OrderStatusHistory } from './entities/order-status-history.entity';
@@ -13,7 +15,10 @@ import { OrdersViewService } from './orders-view.service';
 describe('OrdersViewService', () => {
   const USER_ID = 'u1';
 
-  const order = (id: string) => ({ id, code: `ORD-${id}` }) as Order;
+  const order = (id: string, userId = USER_ID) =>
+    ({ id, code: `ORD-${id}`, userId }) as Order;
+  const user = (id: string) =>
+    ({ id, email: `${id}@example.com`, username: id, fullName: null }) as User;
   const item = (orderId: string, productId: string, productName: string) =>
     ({
       id: `${orderId}-${productId}`,
@@ -37,6 +42,7 @@ describe('OrdersViewService', () => {
   };
   const itemsRepository = { find: jest.fn() };
   const historyRepository = { find: jest.fn() };
+  const usersRepository = { find: jest.fn() };
   const thumbnailsMock = { urlsOf: jest.fn() };
   const i18nMock = { t: jest.fn((key: string) => key) };
 
@@ -44,6 +50,7 @@ describe('OrdersViewService', () => {
     ordersRepository as unknown as Repository<Order>,
     itemsRepository as unknown as Repository<OrderItem>,
     historyRepository as unknown as Repository<OrderStatusHistory>,
+    usersRepository as unknown as Repository<User>,
     thumbnailsMock as unknown as ProductThumbnailsService,
     i18nMock as unknown as I18nService,
   );
@@ -55,6 +62,7 @@ describe('OrdersViewService', () => {
     builder.getManyAndCount.mockResolvedValue([[], 0]);
     itemsRepository.find.mockResolvedValue([]);
     historyRepository.find.mockResolvedValue([]);
+    usersRepository.find.mockResolvedValue([]);
     thumbnailsMock.urlsOf.mockResolvedValue(new Map());
   });
 
@@ -192,6 +200,92 @@ describe('OrdersViewService', () => {
         where: { orderId: 'o1' },
         order: { createdAt: 'ASC', id: 'ASC' },
       });
+    });
+  });
+
+  describe('adminList', () => {
+    const adminQuery = (overrides: Partial<AdminOrdersQueryDto> = {}) =>
+      Object.assign(new AdminOrdersQueryDto(), overrides);
+
+    it('lists every account by default', async () => {
+      await service.adminList(adminQuery());
+
+      expect(builder.where).not.toHaveBeenCalled();
+      expect(builder.andWhere).not.toHaveBeenCalled();
+      expect(usersRepository.find).not.toHaveBeenCalled();
+    });
+
+    it('matches the code as an escaped prefix and filters on the account', async () => {
+      await service.adminList(
+        adminQuery({
+          code: 'ORD-2026_',
+          userId: 'u9',
+          status: OrderStatus.Pending,
+        }),
+      );
+
+      expect(builder.andWhere).toHaveBeenCalledWith('order.code ILIKE :code', {
+        code: 'ORD-2026\\_%',
+      });
+      expect(builder.andWhere).toHaveBeenCalledWith('order.userId = :userId', {
+        userId: 'u9',
+      });
+      expect(builder.andWhere).toHaveBeenCalledWith('order.status = :status', {
+        status: OrderStatus.Pending,
+      });
+    });
+
+    it('loads the customers of a page in one query, deleted ones included', async () => {
+      builder.getManyAndCount.mockResolvedValue([
+        [order('o1', 'u1'), order('o2', 'u2'), order('o3', 'u1')],
+        3,
+      ]);
+      usersRepository.find.mockResolvedValue([user('u1'), user('u2')]);
+
+      const page = await service.adminList(adminQuery());
+
+      expect(usersRepository.find).toHaveBeenCalledTimes(1);
+      expect(usersRepository.find).toHaveBeenCalledWith({
+        where: { id: In(['u1', 'u2']) },
+        select: { id: true, email: true, username: true, fullName: true },
+        withDeleted: true,
+      });
+      expect(page.summaries.map(({ customer }) => customer.id)).toEqual([
+        'u1',
+        'u2',
+        'u1',
+      ]);
+    });
+  });
+
+  describe('adminFind', () => {
+    it('finds any order by code alone', async () => {
+      ordersRepository.findOneBy.mockResolvedValue(null);
+
+      await expect(service.adminFind('ORD-x')).rejects.toThrow(
+        new NotFoundException('orders.NOT_FOUND'),
+      );
+      expect(ordersRepository.findOneBy).toHaveBeenCalledWith({
+        code: 'ORD-x',
+      });
+    });
+
+    it('adds the customer and everyone who changed the order', async () => {
+      ordersRepository.findOneBy.mockResolvedValue(order('o1', 'u1'));
+      historyRepository.find.mockResolvedValue([
+        { id: 'h1', changedBy: 'u1' },
+        { id: 'h2', changedBy: 'a1' },
+        { id: 'h3', changedBy: null },
+      ]);
+      usersRepository.find.mockResolvedValue([user('u1'), user('a1')]);
+
+      const detail = await service.adminFind('ORD-o1');
+
+      expect(usersRepository.find).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { id: In(['u1', 'a1']) } }),
+      );
+      expect(detail.customer).toEqual(user('u1'));
+      expect([...detail.actors.keys()]).toEqual(['u1', 'a1']);
     });
   });
 });

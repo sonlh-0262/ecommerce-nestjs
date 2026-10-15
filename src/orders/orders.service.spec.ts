@@ -25,6 +25,7 @@ import { OrderStatus } from './enums/order-status.enum';
 import { PaymentMethod } from './enums/payment-method.enum';
 import { PaymentStatus } from './enums/payment-status.enum';
 import { OrderCodeService } from './order-code.service';
+import { OrderTransitionsService } from './order-transitions.service';
 import { OrdersViewService } from './orders-view.service';
 import { OrdersService } from './orders.service';
 
@@ -88,9 +89,9 @@ describe('OrdersService', () => {
   const productsMock = {
     lockForSale: jest.fn(),
     recordSale: jest.fn(),
-    restock: jest.fn(),
   };
   const codesMock = { next: jest.fn() };
+  const transitionsMock = { apply: jest.fn() };
   const viewMock = {
     detailOf: jest.fn((value: Order) => Promise.resolve({ order: value })),
   };
@@ -102,6 +103,7 @@ describe('OrdersService', () => {
     cartMock as unknown as CartService,
     productsMock as unknown as ProductsService,
     codesMock as unknown as OrderCodeService,
+    transitionsMock as unknown as OrderTransitionsService,
     viewMock as unknown as OrdersViewService,
     mailMock as unknown as MailQueueService,
     i18nMock as unknown as I18nService,
@@ -387,43 +389,21 @@ describe('OrdersService', () => {
 
   describe('cancel', () => {
     beforeEach(() => {
-      managerMock.find.mockResolvedValue([
-        { productId: 'p1', quantity: 2 },
-        { productId: 'p2', quantity: 1 },
-      ]);
+      transitionsMock.apply.mockImplementation((_manager, value: Order) =>
+        Promise.resolve(value),
+      );
     });
 
-    it('puts every quantity back, in product order to avoid deadlocks', async () => {
-      managerMock.findOne.mockResolvedValue(order());
-
-      await service.cancel(USER, CODE);
-
-      expect(managerMock.find).toHaveBeenCalledWith(OrderItem, {
-        where: { orderId: 'o1' },
-        order: { productId: 'ASC' },
-      });
-      expect(productsMock.restock.mock.calls).toEqual([
-        [managerMock, 'p1', 2],
-        [managerMock, 'p2', 1],
-      ]);
-    });
-
-    it('cancels with the reason and records the change', async () => {
+    it('cancels through the shared transition, keeping the reason', async () => {
       managerMock.findOne.mockResolvedValue(order());
 
       await service.cancel(USER, CODE, { reason: 'Wrong size' });
 
-      expect(managerMock.update).toHaveBeenCalledWith(
-        Order,
-        { id: 'o1' },
-        { status: OrderStatus.Cancelled, reason: 'Wrong size' },
-      );
-      expect(managerMock.insert).toHaveBeenCalledWith(OrderStatusHistory, {
-        orderId: 'o1',
-        fromStatus: OrderStatus.Pending,
-        toStatus: OrderStatus.Cancelled,
+      expect(transitionsMock.apply).toHaveBeenCalledWith(managerMock, order(), {
+        to: OrderStatus.Cancelled,
         reason: 'Wrong size',
         changedBy: USER.id,
+        patch: { reason: 'Wrong size' },
       });
     });
 
@@ -432,22 +412,22 @@ describe('OrdersService', () => {
 
       await service.cancel(USER, CODE);
 
-      expect(managerMock.update).toHaveBeenCalledWith(
-        Order,
-        { id: 'o1' },
-        { status: OrderStatus.Cancelled, reason: null },
+      expect(transitionsMock.apply).toHaveBeenCalledWith(
+        managerMock,
+        order(),
+        expect.objectContaining({ reason: null, patch: { reason: null } }),
       );
     });
 
     it.each([OrderStatus.Confirmed, OrderStatus.Cancelled])(
-      'answers 422 for a %s order and restores nothing',
+      'answers 422 for a %s order and changes nothing',
       async (status) => {
         managerMock.findOne.mockResolvedValue(order({ status }));
 
         await expect(service.cancel(USER, CODE)).rejects.toThrow(
           new UnprocessableEntityException('orders.CANNOT_CANCEL'),
         );
-        expect(productsMock.restock).not.toHaveBeenCalled();
+        expect(transitionsMock.apply).not.toHaveBeenCalled();
       },
     );
 

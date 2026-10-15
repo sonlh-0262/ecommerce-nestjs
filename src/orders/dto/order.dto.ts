@@ -215,7 +215,9 @@ function toOrderItemDto(
   };
 }
 
-function toStatusHistoryDto(entry: OrderStatusHistory): OrderStatusHistoryDto {
+export function toStatusHistoryDto(
+  entry: OrderStatusHistory,
+): OrderStatusHistoryDto {
   return {
     fromStatus: entry.fromStatus,
     toStatus: entry.toStatus,
@@ -248,7 +250,7 @@ export function toOrderResponse(detail: OrderDetail): OrderResponseDto {
   };
 }
 
-function toOrderSummaryDto(summary: OrderSummary): OrderSummaryDto {
+export function toOrderSummaryDto(summary: OrderSummary): OrderSummaryDto {
   return {
     ...toOrderFields(summary.order),
     itemsCount: summary.itemsCount,

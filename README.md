@@ -93,6 +93,10 @@ and the docs must not move when the API version does.
 | GET    | `/products`                  | Guest  | default                | Search and filter published products           |
 | GET    | `/products/featured`         | Guest  | default                | Featured products, best sellers first; cached  |
 | GET    | `/products/:slug`            | Guest  | default                | One published product with images              |
+| GET    | `/products/:slug/reviews`    | Guest  | default                | Reviews newest first, `rating` filter, star distribution |
+| POST   | `/products/:slug/reviews`    | Bearer | default                | Review a product from one of my delivered orders, once |
+| PATCH  | `/reviews/:id`               | Bearer | default                | Edit my review; the product average follows    |
+| DELETE | `/reviews/:id`               | Bearer | default                | Delete my review, or any review as an admin    |
 | GET    | `/cart`                      | Bearer | default                | My cart at current prices, unavailable items flagged |
 | POST   | `/cart/items`                | Bearer | default                | Add a product; adds up with what is already there |
 | PATCH  | `/cart/items/:itemId`        | Bearer | default                | Set the quantity of an item                    |
@@ -106,6 +110,9 @@ and the docs must not move when the API version does.
 | GET    | `/admin/users`               | Admin  | default                | List accounts: `q`, `status`, `role`, paging   |
 | GET    | `/admin/users/:id`           | Admin  | default                | One account + orders count / spent / last      |
 | PATCH  | `/admin/users/:id/status`    | Admin  | default                | Lock (`INACTIVE`) or unlock (`ACTIVE`)         |
+| GET    | `/admin/orders`              | Admin  | default                | Every order: `status`, `code` prefix, `userId`, `from`, `to`, paging |
+| GET    | `/admin/orders/:code`        | Admin  | default                | One order with its customer and who changed it |
+| PATCH  | `/admin/orders/:code/status` | Admin  | default                | Confirm, ship, deliver or reject (with a reason) |
 | POST   | `/admin/categories`          | Admin  | default                | Create a category (two levels at most)         |
 | PATCH  | `/admin/categories/:id`      | Admin  | default                | Rename, move or hide a category                |
 | DELETE | `/admin/categories/:id`      | Admin  | default                | Delete an empty category                       |
@@ -245,6 +252,26 @@ are cached in Redis for five minutes; every admin write bumps a generation
 counter so the next read misses. When Redis is down both are served straight
 from the database.
 
+### Orders and reviews
+
+```bash
+curl -X PATCH http://localhost:3001/api/v1/admin/orders/ORD-20261015-0001/status   -H "Authorization: Bearer $ADMIN_TOKEN" -H 'Content-Type: application/json'   -d '{"order":{"status":"REJECTED","reason":"Outside our delivery area"}}'
+curl -X POST http://localhost:3001/api/v1/products/ao-thun/reviews   -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json'   -d '{"review":{"rating":5,"content":"Vai mat, mac vua nguoi."}}'
+```
+
+An order moves `PENDING -> CONFIRMED -> SHIPPING -> DELIVERED`; from `PENDING`
+the admin can also reject it (a reason of 10+ characters is required) and the
+customer can cancel it. Every other move, including setting the current status
+again, answers `422`. Rejecting or cancelling puts the stock back, delivering
+stamps `deliveredAt` and marks a cash-on-delivery order paid, and the customer
+is emailed on `CONFIRMED` and `REJECTED`. The table lives in
+`src/orders/order-status.machine.ts`.
+
+A review needs a `DELIVERED` order of mine containing the product (`403`
+otherwise) and is unique per product and account (`409`). `averageRating` and
+`reviewCount` on the product are recomputed from the reviews in the same
+transaction as every create, star change and delete.
+
 ### Health
 
 ```bash
@@ -280,7 +307,8 @@ transaction commits, and a BullMQ worker renders the Handlebars template and
 sends it. Jobs retry three times with exponential backoff. The language is
 captured from the request that queued the job, Vietnamese when there is none.
 Templates live in `src/mail/templates/`; every string they print comes from
-`src/i18n/*/mail.json`.
+`src/i18n/*/mail.json`. Mails sent today: account activation, password reset,
+order placed, and order confirmed or rejected (with the reason).
 
 ## Migrations
 
@@ -336,6 +364,9 @@ src/
   users/        profile, avatar, admin user management, one-time tokens
   categories/   category tree: public read, admin CRUD
   products/     product search, admin CRUD, product images
+  cart/         the shopping cart
+  orders/       checkout, order history, status machine, admin order management
+  reviews/      product reviews and the rating aggregate
   cache/        Redis cache with generation-based invalidation
   console/      nest-commander seeders
   mail/         BullMQ queue and worker, Handlebars templates

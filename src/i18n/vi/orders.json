@@ -5,5 +5,7 @@
   "PAYMENT_NOT_APPLICABLE": "Đơn hàng này không thanh toán bằng chuyển khoản",
   "ALREADY_PAID": "Đơn hàng này đã được thanh toán",
   "INVALID_STATE": "Không thể thực hiện thao tác này ở trạng thái hiện tại của đơn hàng",
-  "CODE_SEQUENCE_EXHAUSTED": "Hôm nay có quá nhiều đơn hàng, vui lòng thử lại sau"
+  "CODE_SEQUENCE_EXHAUSTED": "Hôm nay có quá nhiều đơn hàng, vui lòng thử lại sau",
+  "INVALID_TRANSITION": "Không thể chuyển đơn hàng từ {from} sang {to}",
+  "REASON_REQUIRED": "Cần nhập lý do dài ít nhất {min} ký tự để từ chối đơn hàng"
 }

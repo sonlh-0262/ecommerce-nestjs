@@ -63,6 +63,16 @@ describe('MailQueueService', () => {
     expect(queued().data.lang).toBe('en');
   });
 
+  it('keeps a language the caller chose over the request one', async () => {
+    jest
+      .spyOn(I18nContext, 'current')
+      .mockReturnValue({ lang: 'en' } as I18nContext);
+
+    await service.enqueue(MAIL_JOB.VerifyEmail, { ...input, lang: 'vi' });
+
+    expect(queued().data.lang).toBe('vi');
+  });
+
   it('falls back to Vietnamese outside a request', async () => {
     jest.spyOn(I18nContext, 'current').mockReturnValue(undefined);
 

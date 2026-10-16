@@ -55,6 +55,7 @@ import { OrdersModule } from './orders/orders.module';
 import { ProductsModule } from './products/products.module';
 import { REDIS_CLIENT } from './redis/redis.constants';
 import { RedisModule } from './redis/redis.module';
+import { ReviewsModule } from './reviews/reviews.module';
 import { UsersModule } from './users/users.module';
 
 @Module({
@@ -131,6 +132,7 @@ import { UsersModule } from './users/users.module';
     ProductsModule,
     CartModule,
     OrdersModule,
+    ReviewsModule,
   ],
   controllers: [AppController],
   providers: [

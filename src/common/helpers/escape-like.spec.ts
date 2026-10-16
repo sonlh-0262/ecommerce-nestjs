@@ -1,4 +1,4 @@
-import { containsPattern, escapeLike } from './escape-like';
+import { containsPattern, escapeLike, prefixPattern } from './escape-like';
 
 describe('escapeLike', () => {
   it('leaves ordinary text alone', () => {
@@ -17,5 +17,11 @@ describe('escapeLike', () => {
 describe('containsPattern', () => {
   it('matches the escaped text anywhere in the column', () => {
     expect(containsPattern('a_b')).toBe('%a\\_b%');
+  });
+});
+
+describe('prefixPattern', () => {
+  it('matches the escaped text at the start of the column', () => {
+    expect(prefixPattern('ORD-2026_')).toBe('ORD-2026\\_%');
   });
 });

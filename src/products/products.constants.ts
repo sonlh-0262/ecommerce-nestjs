@@ -6,6 +6,7 @@ export const SLUG_MAX_LENGTH = 280;
 
 export const RATING_PRECISION = 3;
 export const RATING_SCALE = 2;
+export const RATING_AVERAGE_EXPRESSION = `AVG(review.rating)::numeric(${RATING_PRECISION}, ${RATING_SCALE})`;
 
 export const PRODUCTS_CATEGORY_FK = 'FK_products_category';
 export const PRODUCTS_PUBLISHED_CONDITION =

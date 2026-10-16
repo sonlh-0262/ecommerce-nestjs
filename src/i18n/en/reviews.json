@@ -1,0 +1,5 @@
+{
+  "NOT_FOUND": "Review not found",
+  "NOT_PURCHASED": "You can only review products from a delivered order",
+  "ALREADY_REVIEWED": "You have already reviewed this product"
+}

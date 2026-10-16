@@ -31,6 +31,8 @@ import { OrderDetail } from './interfaces/order-detail.interface';
 import { UnavailableItem } from './interfaces/unavailable-item.interface';
 import { OrderCodeService } from './order-code.service';
 import { OrderLine, PricedOrder, priceOrder } from './order-pricing';
+import { canTransition } from './order-status.machine';
+import { OrderTransitionsService } from './order-transitions.service';
 import {
   ORDER_PAYABLE_STATUSES,
   UNAVAILABLE_ITEM_REASONS,
@@ -47,6 +49,7 @@ export class OrdersService {
     private readonly cartService: CartService,
     private readonly productsService: ProductsService,
     private readonly orderCodes: OrderCodeService,
+    private readonly transitions: OrderTransitionsService,
     private readonly view: OrdersViewService,
     private readonly mail: MailQueueService,
     private readonly i18n: I18nService,
@@ -155,37 +158,18 @@ export class OrdersService {
     const order = await this.dataSource.transaction(async (manager) => {
       const order = await this.lockOwned(manager, user.id, code);
 
-      if (order.status !== OrderStatus.Pending) {
+      if (!canTransition(order.status, OrderStatus.Cancelled)) {
         throw new UnprocessableEntityException(
           this.i18n.t('orders.CANNOT_CANCEL'),
         );
       }
 
-      const items = await manager.find(OrderItem, {
-        where: { orderId: order.id },
-        order: { productId: 'ASC' },
-      });
-
-      for (const item of items) {
-        await this.productsService.restock(
-          manager,
-          item.productId,
-          item.quantity,
-        );
-      }
-
-      const patch = { status: OrderStatus.Cancelled, reason };
-
-      await manager.update(Order, { id: order.id }, patch);
-      await manager.insert(OrderStatusHistory, {
-        orderId: order.id,
-        fromStatus: order.status,
-        toStatus: patch.status,
+      return this.transitions.apply(manager, order, {
+        to: OrderStatus.Cancelled,
         reason,
         changedBy: user.id,
+        patch: { reason },
       });
-
-      return Object.assign(order, patch);
     });
 
     this.logger.log(`User ${user.id} cancelled order ${order.code}`);

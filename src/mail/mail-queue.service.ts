@@ -24,7 +24,7 @@ export class MailQueueService {
   ): Promise<void> {
     const data = {
       ...payload,
-      lang: resolveMailLanguage(I18nContext.current()?.lang),
+      lang: payload.lang ?? resolveMailLanguage(I18nContext.current()?.lang),
     } as MailJobPayload<T>;
 
     try {

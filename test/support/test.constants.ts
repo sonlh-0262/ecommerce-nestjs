@@ -66,3 +66,10 @@ export const CART_PATHS = {
 } as const;
 
 export const ORDERS_PATH = `${API_BASE_PATH}/orders`;
+
+export const ADMIN_ORDERS_PATH = `${API_BASE_PATH}/admin/orders`;
+
+export const REVIEWS_PATH = `${API_BASE_PATH}/reviews`;
+
+export const productReviewsPath = (slug: string) =>
+  `${PRODUCTS_PATH}/${slug}/reviews`;

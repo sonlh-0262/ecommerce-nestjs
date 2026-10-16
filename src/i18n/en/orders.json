@@ -5,5 +5,7 @@
   "PAYMENT_NOT_APPLICABLE": "This order is not paid by bank transfer",
   "ALREADY_PAID": "This order has already been paid",
   "INVALID_STATE": "This action is not allowed in the current order state",
-  "CODE_SEQUENCE_EXHAUSTED": "Too many orders today, please try again later"
+  "CODE_SEQUENCE_EXHAUSTED": "Too many orders today, please try again later",
+  "INVALID_TRANSITION": "Cannot change an order from {from} to {to}",
+  "REASON_REQUIRED": "A reason of at least {min} characters is required to reject an order"
 }

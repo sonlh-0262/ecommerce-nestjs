@@ -1,4 +1,5 @@
 import { SupportedLanguage } from '../../common/constants/languages';
+import { OrderStatus } from '../../orders/enums/order-status.enum';
 import { MAIL_JOB, MailJobName } from '../mail.constants';
 
 export interface BaseMailJob {
@@ -30,10 +31,17 @@ export interface OrderCreatedMailJob extends GreetedMailJob {
   shippingAddress: string;
 }
 
+export interface OrderStatusChangedMailJob extends GreetedMailJob {
+  orderCode: string;
+  status: OrderStatus;
+  reason: string | null;
+}
+
 export interface MailJobPayloadMap {
   [MAIL_JOB.VerifyEmail]: ActionMailJob;
   [MAIL_JOB.ResetPassword]: ActionMailJob;
   [MAIL_JOB.OrderCreated]: OrderCreatedMailJob;
+  [MAIL_JOB.OrderStatusChanged]: OrderStatusChangedMailJob;
 }
 
 export type MailJobPayload<T extends MailJobName> = MailJobPayloadMap[T];
@@ -41,4 +49,5 @@ export type MailJobPayload<T extends MailJobName> = MailJobPayloadMap[T];
 export type MailJobInput<T extends MailJobName> = Omit<
   MailJobPayload<T>,
   'lang'
->;
+> &
+  Partial<Pick<BaseMailJob, 'lang'>>;

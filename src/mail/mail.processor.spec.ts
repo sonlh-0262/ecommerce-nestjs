@@ -5,14 +5,17 @@ import { UnrecoverableError } from 'bullmq';
 import { I18nService } from 'nestjs-i18n';
 
 import { MailConfig } from '../config/mail.config';
+import { OrderStatus } from '../orders/enums/order-status.enum';
 import {
   ActionMailJob,
   OrderCreatedMailJob,
+  OrderStatusChangedMailJob,
 } from './interfaces/mail-job.interface';
 import {
   MAIL_ACTION_TEMPLATE,
   MAIL_JOB,
   MAIL_ORDER_CREATED_TEMPLATE,
+  MAIL_ORDER_STATUS_CHANGED_TEMPLATE,
   MailJobName,
 } from './mail.constants';
 import { MailJob, MailProcessor } from './mail.processor';
@@ -212,6 +215,54 @@ describe('MailProcessor', () => {
       await processor.process(orderJob('en'));
 
       expect(sent().context.total).toBe('₫330,000');
+    });
+  });
+
+  describe(MAIL_JOB.OrderStatusChanged, () => {
+    const statusJob = (data: Partial<OrderStatusChangedMailJob>) =>
+      ({
+        id: '44',
+        name: MAIL_JOB.OrderStatusChanged,
+        data: {
+          to: 'son@example.com',
+          lang: 'vi',
+          fullName: 'Lanh Hung Son',
+          orderCode: 'ORD-20261005-0001',
+          status: OrderStatus.Confirmed,
+          reason: null,
+          ...data,
+        },
+        attemptsMade: 0,
+      }) as unknown as MailJob;
+
+    it.each([OrderStatus.Confirmed, OrderStatus.Rejected])(
+      'words a %s order with its own copy',
+      async (status) => {
+        await processor.process(statusJob({ status }));
+
+        expect(sent()).toMatchObject({
+          subject: `vi:mail.ORDER_STATUS_CHANGED.${status}.SUBJECT{"code":"ORD-20261005-0001"}`,
+          template: MAIL_ORDER_STATUS_CHANGED_TEMPLATE,
+        });
+        expect(sent().context).toMatchObject({
+          greeting: 'vi:mail.GREETING{"name":"Lanh Hung Son"}',
+          intro: `vi:mail.ORDER_STATUS_CHANGED.${status}.INTRO{"code":"ORD-20261005-0001"}`,
+        });
+      },
+    );
+
+    it('carries the reason of a rejection with its label', async () => {
+      await processor.process(
+        statusJob({
+          status: OrderStatus.Rejected,
+          reason: 'Outside our delivery area',
+        }),
+      );
+
+      expect(sent().context).toMatchObject({
+        reasonLabel: 'vi:mail.ORDER_STATUS_CHANGED.REASON',
+        reason: 'Outside our delivery area',
+      });
     });
   });
 

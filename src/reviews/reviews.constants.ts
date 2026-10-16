@@ -1,3 +1,5 @@
+import { ProductStatus } from '../products/enums/product-status.enum';
+
 export const CONTENT_MIN_LENGTH = 10;
 export const CONTENT_MAX_LENGTH = 1000;
 export const RATING_MIN = 1;
@@ -11,3 +13,8 @@ export const REVIEWS_LISTING_INDEX = 'IDX_reviews_product_created_at';
 export const REVIEWS_RATING_INDEX = 'IDX_reviews_product_rating';
 export const REVIEWS_RATING_CHECK = 'CHK_reviews_rating';
 export const REVIEWS_CONTENT_CHECK = 'CHK_reviews_content';
+
+export const REVIEWABLE_PRODUCT_STATUSES: readonly ProductStatus[] = [
+  ProductStatus.Published,
+  ProductStatus.Archived,
+];

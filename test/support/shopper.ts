@@ -7,7 +7,12 @@ import { Product } from '../../src/products/entities/product.entity';
 import { bearer } from './http';
 import { SeededUser } from './interfaces/seeded-user.interface';
 import { TestContext } from './interfaces/test-context.interface';
-import { ADMIN_ORDERS_PATH, CART_PATHS, ORDERS_PATH } from './test.constants';
+import {
+  ADMIN_ORDERS_PATH,
+  CART_PATHS,
+  ORDERS_PATH,
+  TEST_RECEIVER,
+} from './test.constants';
 
 type Method = 'get' | 'post' | 'patch' | 'delete';
 
@@ -49,12 +54,7 @@ export async function placeOrder(
   const response = await as
     .post(ORDERS_PATH)
     .send({
-      order: {
-        receiverName: 'Lanh Hung Son',
-        receiverPhone: '0901234567',
-        shippingAddress: '1 Nguyen Trai, Ha Noi',
-        paymentMethod,
-      },
+      order: { ...TEST_RECEIVER, paymentMethod },
     })
     .expect(201);
 

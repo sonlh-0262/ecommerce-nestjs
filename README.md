@@ -17,6 +17,7 @@ PostgreSQL.
 | Validation     | class-validator + Joi (env)          |
 | i18n           | nestjs-i18n (`en`, `vi`)             |
 | API docs       | Swagger / OpenAPI at `/docs`         |
+| Health         | @nestjs/terminus (Postgres + Redis)  |
 | Tests          | Jest (unit) + Supertest (e2e)        |
 
 ## Requirements
@@ -32,6 +33,13 @@ docker compose exec api npm run migration:run
 docker compose exec api npm run seed
 docker compose exec api npm run console -- seed:categories
 docker compose exec api npm run console -- seed:products
+```
+
+Or, for a full data set to click through (users, orders in every status,
+reviews), one command that also runs the three above:
+
+```bash
+docker compose exec api npm run console -- seed:demo
 ```
 
 The stack publishes its host ports off the defaults so it can run beside the
@@ -122,7 +130,7 @@ and the docs must not move when the API version does.
 | DELETE | `/admin/products/:id`        | Admin  | default                | Soft delete: ARCHIVED, removed from carts      |
 | POST   | `/admin/products/:id/images` | Admin  | default                | Upload 1-5 images (multipart `files`)          |
 | DELETE | `/admin/products/:id/images/:imageId` | Admin | default        | Delete an image; the next becomes thumbnail    |
-| GET    | `/health`                    | Guest  | none                   | Liveness probe, localised message              |
+| GET    | `/health`                    | Guest  | none                   | Pings Postgres + Redis; 503 when one is down   |
 | GET    | `/docs`                      | Guest  | -                      | Swagger UI (`/docs-json` for the raw document) |
 
 Every route needs a bearer token unless it is marked `@Public()`: the JWT
@@ -279,6 +287,11 @@ curl http://localhost:3001/health
 curl 'http://localhost:3001/health?lang=vi'
 ```
 
+`@nestjs/terminus` pings PostgreSQL (`SELECT 1`) and Redis (`PING`), each with a
+1.5 s timeout, so a dead dependency answers `503` instead of hanging the probe.
+The body has the same shape either way, with `details` naming the component
+that is down. Why it is down goes to the log, not to this public response.
+
 ## Seeding
 
 Seeders are `nest-commander` commands: `npm run console -- <command>`
@@ -291,14 +304,28 @@ password. A failing command exits with code 1.
 | `seed:admin`      | The admin account (`npm run seed` is an alias)                  |
 | `seed:categories` | 8 root categories with 2-3 sub-categories each                  |
 | `seed:products`   | 50 products with placeholder images, 40 published, 10 featured |
+| `seed:demo`       | All of the above, then 5 users, 20 orders and 30 reviews        |
 
 `seed:admin` uses `SEED_ADMIN_EMAIL` / `SEED_ADMIN_PASSWORD` when set; with
 `NODE_ENV=production` it refuses to run without them, because the default
-password is published. `seed:products` refuses production altogether.
+password is published. `seed:products` and `seed:demo` refuse production
+altogether.
+
+`seed:demo` goes through the real services (cart, checkout, payment, the
+status machine, reviews), so it doubles as a check of the business rules. It
+leaves 5 draft and 5 archived products, 4 active users and 1 pending one, 20
+orders across all six statuses and 30 reviews on delivered products. Delivered
+orders are moved back across the last 12 months - the only rows written
+directly - so revenue statistics have more than one month to show. A fixed
+random seed makes every run produce the same data, and a second run changes
+nothing. `--fresh` empties every table, the cache and the upload directory
+first. Demo checkouts queue real order mails, which land in Mailpit.
 
 | Email               | Username | Role  | Password       |
 | ------------------- | -------- | ----- | -------------- |
 | `admin@example.com` | admin    | ADMIN | `Password@123` |
+| `demo.user1@example.com` ... `demo.user4@example.com` | demo_user_1 ... 4 | USER | `Password@123` |
+| `demo.user5@example.com` | demo_user_5 | USER (PENDING) | `Password@123` |
 
 ## Mail
 
@@ -344,6 +371,45 @@ the Docker stack has to be up. Uploaded files go to `./tmp/test-storage`, which
 is deleted between cases. Mail is not sent from e2e: `MailQueueService` is
 replaced by a recorder, so a case can read the token a mail would have carried.
 
+Beside one spec per module, three suites follow a user across modules:
+`journey-account` (register to password reset), `journey-purchase` (cart to
+review, plus a rejected order) and `authorization` - a guest / user / admin
+matrix over every route the app registers, which fails when a new route is
+added without a row. `query-count` proves the list endpoints are free of N+1
+by comparing the queries run for 5 and 50 rows, and checks the cache.
+
+`npm run test:cov` fails under 80% statements for any `*.service.ts`, 90% for
+any guard, filter or state machine, and 60% for the remaining files. Jest
+counts that last bucket without the files the first two rules cover; the
+whole-project figure is about 78%.
+
+## Debugging
+
+`.vscode/launch.json` ships five configurations:
+
+| Configuration | Use it with |
+| --- | --- |
+| Attach: local API (9229) | `npm run start:debug` on the host |
+| Attach: Docker API (9230) | the API container started in debug mode (below) |
+| Debug Jest: current file | the unit spec open in the editor |
+| Debug Jest: current e2e file | the e2e spec open in the editor (stack must be up) |
+| Debug console command | pick a seeder from the list |
+
+The container runs `start:dev` by default, without an inspector. To debug it:
+
+```bash
+docker compose stop api
+docker compose run --rm --service-ports api npm run start:debug
+```
+
+then start **Attach: Docker API (9230)**, set a breakpoint and call the route.
+`docker compose up -d api` goes back to the normal container.
+
+SQL is logged with `DB_LOGGING=true`. Independently of it, any query slower
+than `DB_SLOW_QUERY_MS` (default 500 ms, `0` turns it off) is logged as a
+warning. Each service logs through a `Logger` named after its class, so a
+line says which class wrote it.
+
 ## Quality gates
 
 ```bash
@@ -354,6 +420,24 @@ npm test
 npm run test:e2e
 npm run build
 ```
+
+## Environment
+
+Every variable is listed with its default in `.env.example`, and validated at
+startup by `src/config/env.validation.ts`. Those marked *prod* must be set when
+`NODE_ENV=production`.
+
+| Group | Variables |
+| --- | --- |
+| App | `NODE_ENV`, `PORT`, `APP_NAME`, `API_PREFIX`, `SWAGGER_PATH`, `SWAGGER_ENABLED`, `FALLBACK_LANGUAGE` |
+| Database | `DB_HOST`, `DB_PORT`, `DB_USERNAME`, `DB_PASSWORD`, `DB_DATABASE`, `DB_SCHEMA`, `DB_SSL`, `DB_LOGGING`, `DB_SLOW_QUERY_MS` |
+| Redis | `REDIS_HOST`, `REDIS_PORT`, `REDIS_PASSWORD`, `REDIS_DB`, `REDIS_KEY_PREFIX` |
+| Auth | `JWT_SECRET` (*prod*), `JWT_EXPIRES_IN`, `JWT_ISSUER`, `BCRYPT_SALT_ROUNDS` |
+| Rate limit | `THROTTLE_TTL`, `THROTTLE_LIMIT` |
+| Mail | `MAIL_HOST` (*prod*), `MAIL_PORT` (*prod*), `MAIL_USER`, `MAIL_PASSWORD`, `MAIL_FROM` (*prod*), `MAIL_FROM_NAME`, `APP_WEB_URL` (*prod*) |
+| Files / orders | `STORAGE_ROOT`, `SHIPPING_FEE` |
+| Seeding | `SEED_ADMIN_EMAIL`, `SEED_ADMIN_PASSWORD` |
+| Docker host ports | `API_HOST_PORT`, `DEBUG_HOST_PORT`, `DB_HOST_PORT`, `REDIS_HOST_PORT`, `MAILPIT_SMTP_HOST_PORT`, `MAILPIT_UI_HOST_PORT` |
 
 ## Layout
 
@@ -368,7 +452,8 @@ src/
   orders/       checkout, order history, status machine, admin order management
   reviews/      product reviews and the rating aggregate
   cache/        Redis cache with generation-based invalidation
-  console/      nest-commander seeders
+  health/       terminus health check of Postgres and Redis
+  console/      nest-commander commands and the seeders behind them
   mail/         BullMQ queue and worker, Handlebars templates
   common/       error filter, roles guard, decorators, throttling, pagination
   config/       typed config namespaces, env validation, app + swagger setup

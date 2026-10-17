@@ -12,6 +12,7 @@ import {
   MAX_PORT,
   MAX_REDIS_DB_INDEX,
   MIN_BCRYPT_SALT_ROUNDS,
+  MIN_DB_SLOW_QUERY_MS,
   MIN_JWT_SECRET_LENGTH,
   MIN_PORT,
   MIN_PRODUCTION_BCRYPT_SALT_ROUNDS,
@@ -45,6 +46,7 @@ export interface EnvironmentVariables {
   DB_SCHEMA?: string;
   DB_SSL?: string;
   DB_LOGGING?: string;
+  DB_SLOW_QUERY_MS?: number;
 
   REDIS_HOST?: string;
   REDIS_PORT?: number;
@@ -106,6 +108,7 @@ export const envValidationSchema = Joi.object<EnvironmentVariables>({
   DB_SCHEMA: Joi.string().min(1).optional(),
   DB_SSL: Joi.string().valid('true', 'false').optional(),
   DB_LOGGING: Joi.string().valid('true', 'false').optional(),
+  DB_SLOW_QUERY_MS: Joi.number().integer().min(MIN_DB_SLOW_QUERY_MS).optional(),
 
   REDIS_HOST: Joi.string().min(1).optional(),
   REDIS_PORT: Joi.number().min(MIN_PORT).max(MAX_PORT).optional(),

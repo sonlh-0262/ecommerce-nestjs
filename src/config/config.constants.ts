@@ -45,6 +45,9 @@ export const MAX_BCRYPT_SALT_ROUNDS = 31;
  */
 export const MIN_PRODUCTION_BCRYPT_SALT_ROUNDS = 10;
 
+export const DEFAULT_DB_SLOW_QUERY_MS = 500;
+export const MIN_DB_SLOW_QUERY_MS = 0;
+
 export const DEFAULT_THROTTLE_TTL_SECONDS = 60;
 export const DEFAULT_THROTTLE_LIMIT = 100;
 export const MIN_THROTTLE_VALUE = 1;

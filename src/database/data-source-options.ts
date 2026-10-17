@@ -22,6 +22,7 @@ export function buildDataSourceOptions(
     schema: config.schema,
     ssl: config.ssl,
     logging: config.logging,
+    maxQueryExecutionTime: config.slowQueryMs,
     entities: [ENTITIES_GLOB],
     migrations: [MIGRATIONS_GLOB],
     migrationsTableName: MIGRATIONS_TABLE_NAME,

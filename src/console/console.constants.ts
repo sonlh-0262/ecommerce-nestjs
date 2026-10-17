@@ -8,4 +8,5 @@ export const SEED_COMMANDS = {
   admin: 'seed:admin',
   categories: 'seed:categories',
   products: 'seed:products',
+  demo: 'seed:demo',
 } as const;

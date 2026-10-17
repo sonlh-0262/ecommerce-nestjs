@@ -12,9 +12,9 @@ import { SEED_IMAGE_FILES } from '../../database/seeds/seed.constants';
 import { ProductStatus } from '../../products/enums/product-status.enum';
 import { ProductImagesService } from '../../products/product-images.service';
 import { ProductsService } from '../../products/products.service';
-import { SeedProductsCommand } from './seed-products.command';
+import { ProductsSeeder } from './products.seeder';
 
-describe('SeedProductsCommand', () => {
+describe('ProductsSeeder', () => {
   const productsMock = {
     findBySlug: jest.fn(),
     create: jest.fn(),
@@ -23,8 +23,8 @@ describe('SeedProductsCommand', () => {
   const imagesMock = { add: jest.fn() };
   const categoriesMock = { findBySlug: jest.fn() };
 
-  const command = (nodeEnv = Environment.Development) =>
-    new SeedProductsCommand(
+  const seeder = (nodeEnv = Environment.Development) =>
+    new ProductsSeeder(
       productsMock as unknown as ProductsService,
       imagesMock as unknown as ProductImagesService,
       categoriesMock as unknown as CategoriesService,
@@ -51,7 +51,7 @@ describe('SeedProductsCommand', () => {
   });
 
   it('creates every product as a draft, adds its images, then publishes', async () => {
-    await command().run();
+    await seeder().seed();
 
     const [first] = SEED_PRODUCTS;
     const published = SEED_PRODUCTS.filter(
@@ -87,7 +87,7 @@ describe('SeedProductsCommand', () => {
   it('skips products whose slug already exists', async () => {
     productsMock.findBySlug.mockResolvedValue({ id: 'existing' });
 
-    await command().run();
+    await seeder().seed();
 
     expect(productsMock.create).not.toHaveBeenCalled();
   });
@@ -95,11 +95,11 @@ describe('SeedProductsCommand', () => {
   it('fails when the categories have not been seeded', async () => {
     categoriesMock.findBySlug.mockResolvedValue(null);
 
-    await expect(command().run()).rejects.toThrow(/seed:categories/);
+    await expect(seeder().seed()).rejects.toThrow(/seed:categories/);
   });
 
   it('refuses to run in production', async () => {
-    await expect(command(Environment.Production).run()).rejects.toThrow(
+    await expect(seeder(Environment.Production).seed()).rejects.toThrow(
       /NODE_ENV=production/,
     );
     expect(productsMock.findBySlug).not.toHaveBeenCalled();

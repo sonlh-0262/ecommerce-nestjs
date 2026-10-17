@@ -55,7 +55,7 @@ import { ProductImage } from './product-image.entity';
   where: PRODUCTS_PUBLISHED_CONDITION,
 })
 @Index(PRODUCTS_ADMIN_LIST_INDEX, ['status', 'createdAt', 'id'])
-@Index(PRODUCTS_FEATURED_INDEX, ['createdAt', 'id'], {
+@Index(PRODUCTS_FEATURED_INDEX, ['soldCount', 'id'], {
   where: PRODUCTS_FEATURED_CONDITION,
 })
 @Check(PRODUCTS_PRICE_CHECK, 'price >= 0')

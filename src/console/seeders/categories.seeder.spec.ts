@@ -4,16 +4,16 @@ import { CreateCategoryBodyDto } from '../../categories/dto/create-category.dto'
 import { CategoriesService } from '../../categories/categories.service';
 import { Category } from '../../categories/entities/category.entity';
 import { SEED_CATEGORIES } from '../../database/seeds/categories.seed-data';
-import { SeedCategoriesCommand } from './seed-categories.command';
+import { CategoriesSeeder } from './categories.seeder';
 
-describe('SeedCategoriesCommand', () => {
+describe('CategoriesSeeder', () => {
   const total = SEED_CATEGORIES.reduce(
     (count, root) => count + 1 + root.children.length,
     0,
   );
 
   const categoriesMock = { findBySlug: jest.fn(), create: jest.fn() };
-  let command: SeedCategoriesCommand;
+  let seeder: CategoriesSeeder;
 
   const createdInputs = () =>
     (categoriesMock.create.mock.calls as [CreateCategoryBodyDto][]).map(
@@ -22,7 +22,7 @@ describe('SeedCategoriesCommand', () => {
 
   beforeEach(() => {
     jest.spyOn(Logger.prototype, 'log').mockImplementation(() => undefined);
-    command = new SeedCategoriesCommand(
+    seeder = new CategoriesSeeder(
       categoriesMock as unknown as CategoriesService,
     );
     categoriesMock.findBySlug.mockResolvedValue(null);
@@ -37,7 +37,7 @@ describe('SeedCategoriesCommand', () => {
   });
 
   it('creates every root, then its children under it', async () => {
-    await command.run();
+    await seeder.seed();
 
     const [root] = SEED_CATEGORIES;
 
@@ -56,7 +56,7 @@ describe('SeedCategoriesCommand', () => {
       ),
     );
 
-    await command.run();
+    await seeder.seed();
 
     expect(createdInputs()).not.toContainEqual(
       expect.objectContaining({ name: root.name }),
@@ -70,7 +70,7 @@ describe('SeedCategoriesCommand', () => {
   it('creates nothing on a database that is already seeded', async () => {
     categoriesMock.findBySlug.mockResolvedValue({ id: 'existing' });
 
-    await command.run();
+    await seeder.seed();
 
     expect(categoriesMock.create).not.toHaveBeenCalled();
   });

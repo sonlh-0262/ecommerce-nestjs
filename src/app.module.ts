@@ -13,8 +13,6 @@ import {
 } from 'nestjs-i18n';
 import * as path from 'path';
 
-import { AppController } from './app.controller';
-import { AppService } from './app.service';
 import { AttachmentsModule } from './attachments/attachments.module';
 import { AuthModule } from './auth/auth.module';
 import { CartModule } from './cart/cart.module';
@@ -50,6 +48,7 @@ import throttleConfig, {
 } from './config/throttle.config';
 import { buildThrottlerOptions } from './config/throttler-options';
 import { DatabaseModule } from './database/database.module';
+import { HealthModule } from './health/health.module';
 import { MailModule } from './mail/mail.module';
 import { OrdersModule } from './orders/orders.module';
 import { ProductsModule } from './products/products.module';
@@ -133,10 +132,9 @@ import { UsersModule } from './users/users.module';
     CartModule,
     OrdersModule,
     ReviewsModule,
+    HealthModule,
   ],
-  controllers: [AppController],
   providers: [
-    AppService,
     { provide: APP_GUARD, useClass: ThrottlerGuard },
     { provide: APP_GUARD, useClass: JwtAuthGuard },
     { provide: APP_GUARD, useClass: RolesGuard },

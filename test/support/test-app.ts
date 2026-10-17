@@ -21,11 +21,15 @@ import {
 } from '../../src/config/storage.config';
 import { setupSwagger } from '../../src/config/swagger';
 import { MailQueueService } from '../../src/mail/mail-queue.service';
+import { OrderItem } from '../../src/orders/entities/order-item.entity';
+import { Order } from '../../src/orders/entities/order.entity';
 import { Product } from '../../src/products/entities/product.entity';
 import { REDIS_CLIENT } from '../../src/redis/redis.constants';
+import { Review } from '../../src/reviews/entities/review.entity';
 import { User } from '../../src/users/entities/user.entity';
 import { PasswordService } from '../../src/users/password.service';
 import { CatalogFactory } from './factories/catalog.factory';
+import { OrderFactory } from './factories/order.factory';
 import { UserFactory } from './factories/user.factory';
 import { TestAppOptions } from './interfaces/test-app-options.interface';
 import { TestContext } from './interfaces/test-context.interface';
@@ -90,6 +94,11 @@ export async function createTestApp(
     catalog: new CatalogFactory(
       dataSource.getRepository(Category),
       dataSource.getRepository(Product),
+    ),
+    orders: new OrderFactory(
+      dataSource.getRepository(Order),
+      dataSource.getRepository(OrderItem),
+      dataSource.getRepository(Review),
     ),
     mail,
     storedFiles: () => storedFiles(storageConfig),

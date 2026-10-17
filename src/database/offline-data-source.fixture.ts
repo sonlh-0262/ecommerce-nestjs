@@ -17,6 +17,7 @@ export async function offlineDataSource(): Promise<DataSource> {
       schema: 'public',
       ssl: false,
       logging: false,
+      slowQueryMs: 0,
     }),
   );
 

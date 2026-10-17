@@ -12,16 +12,16 @@ import { CreateUserInput } from '../../users/interfaces/create-user-input.interf
 import { PasswordService } from '../../users/password.service';
 import { USERNAME_MAX_LENGTH } from '../../users/users.constants';
 import { UsersService } from '../../users/users.service';
-import { SeedAdminCommand, usernameFromEmail } from './seed-admin.command';
+import { AdminSeeder, usernameFromEmail } from './admin.seeder';
 
-describe('SeedAdminCommand', () => {
+describe('AdminSeeder', () => {
   const usersServiceMock = { findByEmail: jest.fn(), create: jest.fn() };
   const passwordServiceMock = {
     hash: jest.fn((plain: string) => Promise.resolve(`hash:${plain}`)),
   };
 
-  const command = (nodeEnv: Environment, seed: SeedConfig = {}) =>
-    new SeedAdminCommand(
+  const seeder = (nodeEnv: Environment, seed: SeedConfig = {}) =>
+    new AdminSeeder(
       usersServiceMock as unknown as UsersService,
       passwordServiceMock as unknown as PasswordService,
       {
@@ -49,7 +49,7 @@ describe('SeedAdminCommand', () => {
   });
 
   it('creates an active, verified admin with the development account', async () => {
-    await command(Environment.Development).run();
+    await seeder(Environment.Development).seed();
 
     expect(created()).toMatchObject({
       email: DEFAULT_SEED_ADMIN.email,
@@ -62,7 +62,7 @@ describe('SeedAdminCommand', () => {
   });
 
   it('uses the account the environment names', async () => {
-    await command(Environment.Development, OWNER).run();
+    await seeder(Environment.Development, OWNER).seed();
 
     expect(created()).toMatchObject({
       email: OWNER.adminEmail,
@@ -76,10 +76,23 @@ describe('SeedAdminCommand', () => {
       buildUser({ email: DEFAULT_SEED_ADMIN.email, role: UserRole.Admin }),
     );
 
-    await command(Environment.Development).run();
+    await seeder(Environment.Development).seed();
 
     expect(usersServiceMock.create).not.toHaveBeenCalled();
     expect(passwordServiceMock.hash).not.toHaveBeenCalled();
+  });
+
+  it('hands back the admin it created or found', async () => {
+    const existing = buildUser({ role: UserRole.Admin });
+    const fresh = buildUser({ role: UserRole.Admin });
+
+    usersServiceMock.findByEmail.mockResolvedValueOnce(existing);
+    usersServiceMock.create.mockResolvedValueOnce(fresh);
+
+    await expect(seeder(Environment.Development).seed()).resolves.toBe(
+      existing,
+    );
+    await expect(seeder(Environment.Development).seed()).resolves.toBe(fresh);
   });
 
   it.each([
@@ -87,7 +100,7 @@ describe('SeedAdminCommand', () => {
     ['only an email', { adminEmail: OWNER.adminEmail }],
     ['only a password', { adminPassword: OWNER.adminPassword }],
   ])('refuses production with %s configured', async (_case, seed) => {
-    await expect(command(Environment.Production, seed).run()).rejects.toThrow(
+    await expect(seeder(Environment.Production, seed).seed()).rejects.toThrow(
       /SEED_ADMIN_EMAIL and SEED_ADMIN_PASSWORD/,
     );
 
@@ -95,7 +108,7 @@ describe('SeedAdminCommand', () => {
   });
 
   it('seeds production once both variables are set', async () => {
-    await command(Environment.Production, OWNER).run();
+    await seeder(Environment.Production, OWNER).seed();
 
     expect(created().email).toBe(OWNER.adminEmail);
   });

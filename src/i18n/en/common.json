@@ -1,5 +1,6 @@
 {
   "health_ok": "Service is healthy",
+  "health_unavailable": "One or more dependencies are unavailable",
   "DUPLICATE_RESOURCE": "This record already exists",
   "RELATED_RESOURCE_MISSING": "A related record does not exist",
   "CONSTRAINT_VIOLATED": "The data violates a constraint",

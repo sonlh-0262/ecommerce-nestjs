@@ -18,6 +18,12 @@ export const TEST_STORAGE_ROOT_LEAF = 'test-storage';
 /** Password every fixture account is created with. */
 export const SEEDED_USER_PASSWORD = 'Password@123';
 
+export const TEST_RECEIVER = {
+  receiverName: 'Lanh Hung Son',
+  receiverPhone: '0901234567',
+  shippingAddress: '1 Nguyen Trai, Ha Noi',
+};
+
 /**
  * The public URLs, as `document/02-api-endpoints.md` §0 and §15 fix them.
  *

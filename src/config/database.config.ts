@@ -1,5 +1,7 @@
 import { registerAs } from '@nestjs/config';
 
+import { DEFAULT_DB_SLOW_QUERY_MS } from './config.constants';
+
 export interface DatabaseConfig {
   host: string;
   port: number;
@@ -9,6 +11,7 @@ export interface DatabaseConfig {
   schema: string;
   ssl: boolean;
   logging: boolean;
+  slowQueryMs: number;
 }
 
 export const DATABASE_CONFIG_KEY = 'database';
@@ -22,4 +25,8 @@ export default registerAs(DATABASE_CONFIG_KEY, (): DatabaseConfig => ({
   schema: process.env.DB_SCHEMA ?? 'public',
   ssl: process.env.DB_SSL === 'true',
   logging: process.env.DB_LOGGING === 'true',
+  slowQueryMs: parseInt(
+    process.env.DB_SLOW_QUERY_MS ?? String(DEFAULT_DB_SLOW_QUERY_MS),
+    10,
+  ),
 }));

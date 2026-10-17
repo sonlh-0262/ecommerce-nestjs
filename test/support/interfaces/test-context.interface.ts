@@ -3,6 +3,7 @@ import { App } from 'supertest/types';
 import { DataSource } from 'typeorm';
 
 import { CatalogFactory } from '../factories/catalog.factory';
+import { OrderFactory } from '../factories/order.factory';
 import { UserFactory } from '../factories/user.factory';
 import { MailRecorder } from '../mail-recorder';
 
@@ -13,6 +14,7 @@ export interface TestContext {
   /** Seeds accounts without going through the API. */
   users: UserFactory;
   catalog: CatalogFactory;
+  orders: OrderFactory;
   mail: MailRecorder;
   storedFiles: () => Promise<string[]>;
   /** HTTP server to hand to `supertest`. */

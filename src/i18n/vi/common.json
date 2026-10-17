@@ -1,5 +1,6 @@
 {
   "health_ok": "Dịch vụ đang hoạt động bình thường",
+  "health_unavailable": "Một hoặc nhiều thành phần phụ thuộc đang không hoạt động",
   "DUPLICATE_RESOURCE": "Bản ghi này đã tồn tại",
   "RELATED_RESOURCE_MISSING": "Bản ghi liên quan không tồn tại",
   "CONSTRAINT_VIOLATED": "Dữ liệu vi phạm ràng buộc",

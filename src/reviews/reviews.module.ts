@@ -18,5 +18,6 @@ import { ReviewsService } from './reviews.service';
   ],
   controllers: [ProductReviewsController, ReviewsController],
   providers: [ReviewsService, ReviewsViewService],
+  exports: [ReviewsService],
 })
 export class ReviewsModule {}

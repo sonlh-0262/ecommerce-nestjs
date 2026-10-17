@@ -180,4 +180,16 @@ describe('envValidationSchema', () => {
       );
     });
   });
+
+  describe('DB_SLOW_QUERY_MS', () => {
+    it.each(['0', '500'])('accepts %s', (threshold) => {
+      expect(validate({ DB_SLOW_QUERY_MS: threshold }).error).toBeUndefined();
+    });
+
+    it.each(['-1', '2.5', 'slow'])('rejects %s', (threshold) => {
+      expect(
+        validate({ DB_SLOW_QUERY_MS: threshold }).error?.message,
+      ).toContain('DB_SLOW_QUERY_MS');
+    });
+  });
 });

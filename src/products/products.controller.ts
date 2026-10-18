@@ -10,17 +10,28 @@ import { ApiErrorResponse } from '../common/decorators/api-error-response.decora
 import { Public } from '../common/decorators/public.decorator';
 import { ProductResponseDto, ProductsResponseDto } from './dto/product.dto';
 import {
+  ProductShareResponseDto,
+  toProductShareResponse,
+} from './dto/product-share.dto';
+import {
   FeaturedProductsQueryDto,
   ProductsQueryDto,
 } from './dto/products-query.dto';
+import { ProductShareService } from './product-share.service';
 import { ProductsViewService } from './products-view.service';
-import { FEATURED_PRODUCTS_ROUTE } from './products.constants';
+import {
+  FEATURED_PRODUCTS_ROUTE,
+  PRODUCT_SHARE_ROUTE,
+} from './products.constants';
 
 @ApiTags('Products')
 @Public()
 @Controller('products')
 export class ProductsController {
-  constructor(private readonly view: ProductsViewService) {}
+  constructor(
+    private readonly view: ProductsViewService,
+    private readonly sharing: ProductShareService,
+  ) {}
 
   @Get()
   @ApiOperation({
@@ -60,5 +71,20 @@ export class ProductsController {
   @ApiErrorResponse(HttpStatus.NOT_FOUND, 'No published product has this slug.')
   findOne(@Param('slug') slug: string): Promise<ProductResponseDto> {
     return this.view.findPublishedBySlug(slug);
+  }
+
+  @Get(PRODUCT_SHARE_ROUTE)
+  @ApiOperation({
+    summary: 'Links to share a product',
+    description:
+      'The product page, the Facebook and X (Twitter) share links and the ' +
+      'Open Graph title, description and image. Nothing is posted: the ' +
+      'client opens the link. Only published products can be shared.',
+  })
+  @ApiParam({ name: 'slug', example: 'ao-thun-cotton-basic' })
+  @ApiOkResponse({ type: ProductShareResponseDto })
+  @ApiErrorResponse(HttpStatus.NOT_FOUND, 'No published product has this slug.')
+  async share(@Param('slug') slug: string): Promise<ProductShareResponseDto> {
+    return toProductShareResponse(await this.sharing.share(slug));
   }
 }

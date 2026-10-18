@@ -36,5 +36,24 @@
       "INTRO": "Rất tiếc, đơn hàng {code} đã bị từ chối và sẽ không được giao."
     },
     "REASON": "Lý do"
+  },
+  "ORDER_AUTO_CANCELLED": {
+    "SUBJECT": "Đơn hàng {code} đã bị hủy",
+    "INTRO": "Đơn hàng {code} đã được hệ thống tự động hủy vì không được xác nhận trong vòng {days} ngày. Sản phẩm đã được mở bán lại, bạn có thể đặt đơn mới bất cứ lúc nào."
+  },
+  "MONTHLY_REVENUE_REPORT": {
+    "SUBJECT": "Báo cáo doanh thu {period}",
+    "INTRO": "Dưới đây là số liệu tổng hợp của {period}. Chỉ tính các đơn đã giao, theo ngày giao hàng.",
+    "REVENUE": "Doanh thu",
+    "ORDERS": "Số đơn đã giao",
+    "PREVIOUS_REVENUE": "Doanh thu tháng trước",
+    "PREVIOUS_ORDERS": "Số đơn đã giao tháng trước",
+    "CHANGE": "Thay đổi doanh thu",
+    "NO_COMPARISON": "Tháng trước không có doanh thu để so sánh",
+    "TOP_PRODUCTS": "Sản phẩm bán chạy",
+    "PRODUCT": "Sản phẩm",
+    "SOLD_QUANTITY": "Đã bán",
+    "PRODUCT_REVENUE": "Doanh thu",
+    "NO_SALES": "Không có đơn nào được giao trong tháng này."
   }
 }

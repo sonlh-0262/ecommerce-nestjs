@@ -10,6 +10,8 @@ import {
 } from '../src/products/dto/product.dto';
 import { Product } from '../src/products/entities/product.entity';
 import { ProductStatus } from '../src/products/enums/product-status.enum';
+import { SuggestionResponseDto } from '../src/product-suggestions/dto/suggestion.dto';
+import { SuggestionStatus } from '../src/product-suggestions/enums/suggestion-status.enum';
 import { ReviewResponseDto } from '../src/reviews/dto/review.dto';
 import { UserRole } from '../src/users/enums/user-role.enum';
 import { UserStatus } from '../src/users/enums/user-status.enum';
@@ -25,6 +27,8 @@ import {
   ADMIN_CATEGORIES_PATH,
   ADMIN_ORDERS_PATH,
   ADMIN_PRODUCTS_PATH,
+  ADMIN_STATS_PATHS,
+  ADMIN_SUGGESTIONS_PATH,
   ADMIN_USERS_PATH,
   API_BASE_PATH,
   ATTACHMENTS_PATH,
@@ -37,8 +41,11 @@ import {
   PROFILE_PATHS,
   REVIEWS_PATH,
   SEEDED_USER_PASSWORD,
+  SUGGESTIONS_PATH,
   TEST_RECEIVER,
+  TEST_SUGGESTION,
   productReviewsPath,
+  productSharePath,
 } from './support/test.constants';
 
 type Actor = 'guest' | 'user' | 'admin';
@@ -165,6 +172,17 @@ class Fixtures {
     });
   }
 
+  suggestion(): Promise<string> {
+    return this.once('suggestion', async () => {
+      const response = await actingAs(this.ctx, this.accounts.user)
+        .post(SUGGESTIONS_PATH)
+        .send({ suggestion: TEST_SUGGESTION })
+        .expect(201);
+
+      return (response.body as SuggestionResponseDto).suggestion.id;
+    });
+  }
+
   private once<T>(key: string, build: () => Promise<T>): Promise<T> {
     if (!this.built.has(key)) {
       this.built.set(key, build());
@@ -214,6 +232,13 @@ const PUBLIC_ROUTES: RouteCase[] = [
     route: `GET ${ATTACHMENTS_PATH}/:id`,
     expected: open(),
     build: async (fx) => ({ path: await fx.publicImageUrl() }),
+  },
+  {
+    route: `GET ${PRODUCTS_PATH}/:slug/share`,
+    expected: open(),
+    build: async (fx) => ({
+      path: productSharePath((await fx.product('public')).slug),
+    }),
   },
 ];
 
@@ -424,6 +449,20 @@ const SIGNED_IN_ROUTES: RouteCase[] = [
       path: `${REVIEWS_PATH}/${await fx.review(account)}`,
     }),
   },
+  {
+    route: `POST ${SUGGESTIONS_PATH}`,
+    expected: signedIn(201),
+    build: () =>
+      Promise.resolve({
+        path: SUGGESTIONS_PATH,
+        body: { suggestion: TEST_SUGGESTION },
+      }),
+  },
+  {
+    route: `GET ${SUGGESTIONS_PATH}`,
+    expected: signedIn(),
+    build: at(SUGGESTIONS_PATH),
+  },
 ];
 
 const ADMIN_ROUTES: RouteCase[] = [
@@ -545,6 +584,34 @@ const ADMIN_ROUTES: RouteCase[] = [
     build: async (fx) => ({
       path: `${ADMIN_ORDERS_PATH}/${await fx.pendingOrder('user')}/status`,
       body: { order: { status: OrderStatus.Confirmed } },
+    }),
+  },
+  {
+    route: `GET ${ADMIN_STATS_PATHS.overview}`,
+    expected: adminOnly(),
+    build: at(ADMIN_STATS_PATHS.overview),
+  },
+  {
+    route: `GET ${ADMIN_STATS_PATHS.bestSellers}`,
+    expected: adminOnly(),
+    build: at(ADMIN_STATS_PATHS.bestSellers),
+  },
+  {
+    route: `GET ${ADMIN_STATS_PATHS.revenue}`,
+    expected: adminOnly(),
+    build: at(`${ADMIN_STATS_PATHS.revenue}?groupBy=month`),
+  },
+  {
+    route: `GET ${ADMIN_SUGGESTIONS_PATH}`,
+    expected: adminOnly(),
+    build: at(ADMIN_SUGGESTIONS_PATH),
+  },
+  {
+    route: `PATCH ${ADMIN_SUGGESTIONS_PATH}/:id`,
+    expected: adminOnly(),
+    build: async (fx) => ({
+      path: `${ADMIN_SUGGESTIONS_PATH}/${await fx.suggestion()}`,
+      body: { suggestion: { status: SuggestionStatus.Approved } },
     }),
   },
 ];

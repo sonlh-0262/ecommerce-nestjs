@@ -9,6 +9,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import Redis from 'ioredis';
 
 import { RedisConfig, REDIS_CONFIG_KEY } from '../config/redis.config';
+import { RedisLockService } from './redis-lock.service';
 import { REDIS_CLIENT } from './redis.constants';
 
 @Global()
@@ -42,8 +43,9 @@ import { REDIS_CLIENT } from './redis.constants';
         return client;
       },
     },
+    RedisLockService,
   ],
-  exports: [REDIS_CLIENT],
+  exports: [REDIS_CLIENT, RedisLockService],
 })
 export class RedisModule implements OnApplicationShutdown {
   constructor(@Inject(REDIS_CLIENT) private readonly client: Redis) {}

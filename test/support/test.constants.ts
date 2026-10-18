@@ -79,3 +79,21 @@ export const REVIEWS_PATH = `${API_BASE_PATH}/reviews`;
 
 export const productReviewsPath = (slug: string) =>
   `${PRODUCTS_PATH}/${slug}/reviews`;
+
+export const productSharePath = (slug: string) =>
+  `${PRODUCTS_PATH}/${slug}/share`;
+
+export const ADMIN_STATS_PATHS = {
+  overview: `${API_BASE_PATH}/admin/stats/overview`,
+  bestSellers: `${API_BASE_PATH}/admin/stats/best-sellers`,
+  revenue: `${API_BASE_PATH}/admin/stats/revenue`,
+} as const;
+
+export const SUGGESTIONS_PATH = `${API_BASE_PATH}/product-suggestions`;
+
+export const ADMIN_SUGGESTIONS_PATH = `${API_BASE_PATH}/admin/product-suggestions`;
+
+export const TEST_SUGGESTION = {
+  name: 'Bình giữ nhiệt inox',
+  description: 'Loại giữ nóng 12 tiếng, có quai xách.',
+};

@@ -36,5 +36,24 @@
       "INTRO": "We are sorry, order {code} has been rejected and will not be shipped."
     },
     "REASON": "Reason"
+  },
+  "ORDER_AUTO_CANCELLED": {
+    "SUBJECT": "Order {code} has been cancelled",
+    "INTRO": "Order {code} was cancelled automatically because it was not confirmed within {days} days. Its items are back on sale, so you are welcome to order again."
+  },
+  "MONTHLY_REVENUE_REPORT": {
+    "SUBJECT": "Revenue report for {period}",
+    "INTRO": "Here is the summary of {period}. Only delivered orders count, by the day they were delivered.",
+    "REVENUE": "Revenue",
+    "ORDERS": "Delivered orders",
+    "PREVIOUS_REVENUE": "Revenue of the month before",
+    "PREVIOUS_ORDERS": "Delivered orders of the month before",
+    "CHANGE": "Revenue change",
+    "NO_COMPARISON": "No revenue the month before to compare with",
+    "TOP_PRODUCTS": "Best sellers",
+    "PRODUCT": "Product",
+    "SOLD_QUANTITY": "Sold",
+    "PRODUCT_REVENUE": "Revenue",
+    "NO_SALES": "No order was delivered this month."
   }
 }

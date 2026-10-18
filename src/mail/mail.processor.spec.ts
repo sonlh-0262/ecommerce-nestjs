@@ -8,12 +8,14 @@ import { MailConfig } from '../config/mail.config';
 import { OrderStatus } from '../orders/enums/order-status.enum';
 import {
   ActionMailJob,
+  MonthlyRevenueReportMailJob,
   OrderCreatedMailJob,
   OrderStatusChangedMailJob,
 } from './interfaces/mail-job.interface';
 import {
   MAIL_ACTION_TEMPLATE,
   MAIL_JOB,
+  MAIL_MONTHLY_REVENUE_REPORT_TEMPLATE,
   MAIL_ORDER_CREATED_TEMPLATE,
   MAIL_ORDER_STATUS_CHANGED_TEMPLATE,
   MailJobName,
@@ -263,6 +265,106 @@ describe('MailProcessor', () => {
         reasonLabel: 'vi:mail.ORDER_STATUS_CHANGED.REASON',
         reason: 'Outside our delivery area',
       });
+    });
+  });
+
+  describe(MAIL_JOB.OrderAutoCancelled, () => {
+    it('explains the cancellation with the code and the delay', async () => {
+      await processor.process({
+        id: '45',
+        name: MAIL_JOB.OrderAutoCancelled,
+        data: {
+          to: 'son@example.com',
+          lang: 'vi',
+          fullName: 'Lanh Hung Son',
+          orderCode: 'ORD-20261005-0001',
+          days: 7,
+        },
+        attemptsMade: 0,
+      } as unknown as MailJob);
+
+      expect(sent()).toMatchObject({
+        subject:
+          'vi:mail.ORDER_AUTO_CANCELLED.SUBJECT{"code":"ORD-20261005-0001"}',
+        template: MAIL_ORDER_STATUS_CHANGED_TEMPLATE,
+      });
+      expect(sent().context).toMatchObject({
+        intro:
+          'vi:mail.ORDER_AUTO_CANCELLED.INTRO{"code":"ORD-20261005-0001","days":7}',
+      });
+    });
+  });
+
+  describe(MAIL_JOB.MonthlyRevenueReport, () => {
+    const report = (
+      overrides: Partial<MonthlyRevenueReportMailJob> = {},
+    ): MailJob =>
+      ({
+        id: '46',
+        name: MAIL_JOB.MonthlyRevenueReport,
+        data: {
+          to: 'admin@example.com',
+          lang: 'en',
+          fullName: 'Seed Admin',
+          year: 2026,
+          month: 9,
+          current: { orders: 3, revenue: 1_500_000 },
+          previous: { orders: 2, revenue: 1_000_000 },
+          topProducts: [{ name: 'Áo thun', soldQuantity: 4, revenue: 800_000 }],
+          ...overrides,
+        },
+        attemptsMade: 0,
+      }) as unknown as MailJob;
+
+    it('names the month in the reader language', async () => {
+      await processor.process(report());
+
+      expect(sent()).toMatchObject({
+        to: 'admin@example.com',
+        subject:
+          'en:mail.MONTHLY_REVENUE_REPORT.SUBJECT{"period":"September 2026"}',
+        template: MAIL_MONTHLY_REVENUE_REPORT_TEMPLATE,
+      });
+    });
+
+    it('writes Vietnamese month names for a Vietnamese reader', async () => {
+      await processor.process(report({ lang: 'vi' }));
+
+      expect(sent().subject).toBe(
+        'vi:mail.MONTHLY_REVENUE_REPORT.SUBJECT{"period":"tháng 9 năm 2026"}',
+      );
+    });
+
+    it('puts the totals, the change and the best sellers in the context', async () => {
+      await processor.process(report());
+
+      expect(sent().context).toMatchObject({
+        revenue: '₫1,500,000',
+        orders: 3,
+        previousRevenue: '₫1,000,000',
+        previousOrders: 2,
+        change: '+50%',
+        topProducts: [
+          { name: 'Áo thun', soldQuantity: 4, revenue: '₫800,000' },
+        ],
+        labels: { revenue: 'en:mail.MONTHLY_REVENUE_REPORT.REVENUE' },
+      });
+    });
+
+    it('shows a drop with a minus sign', async () => {
+      await processor.process(
+        report({ current: { orders: 1, revenue: 750_000 } }),
+      );
+
+      expect(sent().context.change).toBe('-25%');
+    });
+
+    it('says there is nothing to compare when the month before sold nothing', async () => {
+      await processor.process(report({ previous: { orders: 0, revenue: 0 } }));
+
+      expect(sent().context.change).toBe(
+        'en:mail.MONTHLY_REVENUE_REPORT.NO_COMPARISON',
+      );
     });
   });
 

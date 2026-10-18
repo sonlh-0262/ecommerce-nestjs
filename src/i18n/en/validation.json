@@ -20,5 +20,6 @@
   "PHONE_FORMAT": "{property} may only contain digits, spaces and + - ( )",
   "AT_LEAST_ONE_FIELD": "{property} must contain at least one field",
   "IS_IN": "{property} must be one of: {constraints.0}",
-  "IS_DATE": "{property} must be an ISO 8601 date"
+  "IS_DATE": "{property} must be an ISO 8601 date",
+  "IS_URL": "{property} must be an http or https URL"
 }

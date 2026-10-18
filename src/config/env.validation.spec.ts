@@ -13,6 +13,7 @@ describe('envValidationSchema', () => {
     MAIL_PORT: '587',
     MAIL_FROM: 'no-reply@example.com',
     APP_WEB_URL: 'https://shop.example.com',
+    APP_API_URL: 'https://api.example.com',
   };
 
   const validate = (env: Record<string, string>) =>
@@ -84,14 +85,17 @@ describe('envValidationSchema', () => {
   });
 
   describe('mail and links', () => {
-    it.each(['MAIL_HOST', 'MAIL_PORT', 'MAIL_FROM', 'APP_WEB_URL'])(
-      'requires %s in production',
-      (key) => {
-        const { [key]: _omitted, ...withoutKey } = PRODUCTION;
+    it.each([
+      'MAIL_HOST',
+      'MAIL_PORT',
+      'MAIL_FROM',
+      'APP_WEB_URL',
+      'APP_API_URL',
+    ])('requires %s in production', (key) => {
+      const { [key]: _omitted, ...withoutKey } = PRODUCTION;
 
-        expect(validate(withoutKey).error?.message).toContain(key);
-      },
-    );
+      expect(validate(withoutKey).error?.message).toContain(key);
+    });
 
     it('accepts a complete production mail setup', () => {
       expect(validate(PRODUCTION).error).toBeUndefined();
@@ -113,6 +117,42 @@ describe('envValidationSchema', () => {
       const { error } = validate({ APP_WEB_URL: 'https://shop.example.com/' });
 
       expect(error?.message).toContain('APP_WEB_URL');
+    });
+
+    it('rejects an API URL with a trailing slash', () => {
+      const { error } = validate({ APP_API_URL: 'https://api.example.com/' });
+
+      expect(error?.message).toContain('APP_API_URL');
+    });
+  });
+
+  describe('APP_TIMEZONE', () => {
+    it.each(['Asia/Ho_Chi_Minh', 'UTC', 'Europe/Paris'])(
+      'accepts the IANA zone %s',
+      (zone) => {
+        expect(validate({ APP_TIMEZONE: zone }).error).toBeUndefined();
+      },
+    );
+
+    it.each(['Asia/Hanoi_City', 'GMT+25', '+07:00', 'GMT', ''])(
+      'rejects %p',
+      (zone) => {
+        expect(validate({ APP_TIMEZONE: zone }).error?.message).toContain(
+          'APP_TIMEZONE',
+        );
+      },
+    );
+  });
+
+  describe('ORDER_AUTO_CANCEL_DAYS', () => {
+    it.each(['1', '7'])('accepts %s days', (days) => {
+      expect(validate({ ORDER_AUTO_CANCEL_DAYS: days }).error).toBeUndefined();
+    });
+
+    it.each(['0', '1.5', 'week'])('rejects %s', (days) => {
+      expect(
+        validate({ ORDER_AUTO_CANCEL_DAYS: days }).error?.message,
+      ).toContain('ORDER_AUTO_CANCEL_DAYS');
     });
   });
 

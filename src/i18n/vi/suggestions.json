@@ -1,0 +1,6 @@
+{
+  "NOT_FOUND": "Không tìm thấy gợi ý sản phẩm",
+  "TOO_MANY_PENDING": "Bạn đang có {max} gợi ý chờ duyệt",
+  "ALREADY_REVIEWED": "Gợi ý này đã được duyệt trước đó",
+  "NOTE_REQUIRED": "Cần ghi chú lý do khi từ chối gợi ý"
+}

@@ -1,0 +1,6 @@
+{
+  "NOT_FOUND": "Product suggestion not found",
+  "TOO_MANY_PENDING": "You already have {max} suggestions waiting for review",
+  "ALREADY_REVIEWED": "This suggestion has already been reviewed",
+  "NOTE_REQUIRED": "A note is required to reject a suggestion"
+}

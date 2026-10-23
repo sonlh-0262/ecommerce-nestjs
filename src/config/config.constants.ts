@@ -58,8 +58,15 @@ export const DEFAULT_MAIL_FROM = 'no-reply@ecommerce.local';
 export const DEFAULT_MAIL_FROM_NAME = 'Ecommerce';
 
 export const DEFAULT_APP_WEB_URL = 'http://localhost:3000';
+export const DEFAULT_APP_API_URL = 'http://localhost:3000';
 export const WEB_URL_SCHEMES = ['http', 'https'];
 export const NO_TRAILING_SLASH_PATTERN = /[^/]$/;
+
+export const DEFAULT_APP_TIMEZONE = 'Asia/Ho_Chi_Minh';
+export const IANA_TIME_ZONE_PATTERN = /^(UTC|[A-Za-z_]+(\/[A-Za-z0-9_+-]+)+)$/;
+
+export const DEFAULT_ORDER_AUTO_CANCEL_DAYS = 7;
+export const MIN_ORDER_AUTO_CANCEL_DAYS = 1;
 
 export const DEFAULT_STORAGE_ROOT = './storage';
 

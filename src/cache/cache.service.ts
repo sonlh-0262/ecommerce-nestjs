@@ -7,6 +7,7 @@ import {
   CacheVariant,
   generationKey,
 } from '../common/constants/cache-keys';
+import { errorMessage } from '../common/helpers/error-message';
 import { withTimeout } from '../common/helpers/with-timeout';
 import { REDIS_CLIENT } from '../redis/redis.constants';
 import { CACHE_COMMAND_TIMEOUT_MS } from './cache.constants';
@@ -49,7 +50,7 @@ export class CacheService {
         await this.command(this.redis.incr(generationKey(resource)));
       } catch (error) {
         this.logger.warn(
-          `Cache invalidation failed for ${resource}: ${messageOf(error)}`,
+          `Cache invalidation failed for ${resource}: ${errorMessage(error)}`,
         );
       }
     }
@@ -62,7 +63,7 @@ export class CacheService {
       );
     } catch (error) {
       this.logger.warn(
-        `Cache generation unreadable for ${resource}: ${messageOf(error)}`,
+        `Cache generation unreadable for ${resource}: ${errorMessage(error)}`,
       );
 
       return null;
@@ -75,7 +76,7 @@ export class CacheService {
 
       return raw === null ? null : (JSON.parse(raw) as T);
     } catch (error) {
-      this.logger.warn(`Cache read failed for ${key}: ${messageOf(error)}`);
+      this.logger.warn(`Cache read failed for ${key}: ${errorMessage(error)}`);
 
       return null;
     }
@@ -91,15 +92,11 @@ export class CacheService {
         this.redis.set(key, JSON.stringify(value), 'EX', ttlSeconds),
       );
     } catch (error) {
-      this.logger.warn(`Cache write failed for ${key}: ${messageOf(error)}`);
+      this.logger.warn(`Cache write failed for ${key}: ${errorMessage(error)}`);
     }
   }
 
   private command<T>(pending: Promise<T>): Promise<T> {
     return withTimeout(pending, CACHE_COMMAND_TIMEOUT_MS);
   }
-}
-
-function messageOf(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
 }

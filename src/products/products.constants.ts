@@ -85,3 +85,18 @@ export const PRODUCT_IMAGES_UPLOAD: ImageUploadSpec = {
   maxFiles: MAX_PRODUCT_IMAGES,
   textFields: 1,
 };
+
+export const PRODUCT_SHARE_ROUTE = ':slug/share';
+
+export const PRODUCT_WEB_PATH = 'products';
+
+export const SHARE_DESCRIPTION_MAX_LENGTH = 160;
+
+export const SHARE_TARGETS = {
+  facebook: { url: 'https://www.facebook.com/sharer/sharer.php', link: 'u' },
+  twitter: {
+    url: 'https://twitter.com/intent/tweet',
+    link: 'url',
+    text: 'text',
+  },
+} as const;

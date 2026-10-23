@@ -13,6 +13,7 @@ export const VALIDATION_MESSAGES = {
   isUuid: translated('IS_UUID'),
   isDate: translated('IS_DATE'),
   isIn: translated('IS_IN'),
+  isUrl: translated('IS_URL'),
   isObject: translated('IS_OBJECT'),
   min: translated('MIN'),
   max: translated('MAX'),

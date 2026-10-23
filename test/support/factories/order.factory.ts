@@ -1,4 +1,4 @@
-import { Repository } from 'typeorm';
+import { DeepPartial, Repository } from 'typeorm';
 
 import { DEFAULT_SHIPPING_FEE as SHIPPING_FEE } from '../../../src/config/config.constants';
 import { OrderItem } from '../../../src/orders/entities/order-item.entity';
@@ -18,7 +18,15 @@ export class OrderFactory {
     private readonly reviews: Repository<Review>,
   ) {}
 
-  async order(buyer: User, product: Product): Promise<Order> {
+  async order(
+    buyer: User,
+    product: Product,
+    {
+      quantity = 1,
+      ...overrides
+    }: DeepPartial<Order> & { quantity?: number } = {},
+  ): Promise<Order> {
+    const subtotal = product.price * quantity;
     const order = await this.orders.save(
       this.orders.create({
         code: `ORD-TEST-${nextSequence()}`,
@@ -26,9 +34,10 @@ export class OrderFactory {
         status: OrderStatus.Pending,
         paymentMethod: PaymentMethod.Cod,
         ...TEST_RECEIVER,
-        subtotal: product.price,
+        subtotal,
         shippingFee: SHIPPING_FEE,
-        total: product.price + SHIPPING_FEE,
+        total: subtotal + SHIPPING_FEE,
+        ...overrides,
       }),
     );
 
@@ -38,8 +47,8 @@ export class OrderFactory {
       productName: product.name,
       productSlug: product.slug,
       unitPrice: product.price,
-      quantity: 1,
-      lineTotal: product.price,
+      quantity,
+      lineTotal: subtotal,
     });
 
     return order;

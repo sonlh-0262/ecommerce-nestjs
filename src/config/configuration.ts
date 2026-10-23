@@ -1,7 +1,11 @@
 import { registerAs } from '@nestjs/config';
 
 import { DEFAULT_LANGUAGE } from '../common/constants/languages';
-import { DEFAULT_APP_WEB_URL } from './config.constants';
+import {
+  DEFAULT_APP_API_URL,
+  DEFAULT_APP_TIMEZONE,
+  DEFAULT_APP_WEB_URL,
+} from './config.constants';
 
 export interface AppConfig {
   nodeEnv: string;
@@ -10,6 +14,8 @@ export interface AppConfig {
   apiPrefix: string;
   fallbackLanguage: string;
   webUrl: string;
+  apiUrl: string;
+  timeZone: string;
   swagger: {
     enabled: boolean;
     path: string;
@@ -29,6 +35,8 @@ export default registerAs(APP_CONFIG_KEY, (): AppConfig => ({
   apiPrefix: process.env.API_PREFIX ?? '',
   fallbackLanguage: process.env.FALLBACK_LANGUAGE ?? DEFAULT_LANGUAGE,
   webUrl: process.env.APP_WEB_URL ?? DEFAULT_APP_WEB_URL,
+  apiUrl: process.env.APP_API_URL ?? DEFAULT_APP_API_URL,
+  timeZone: process.env.APP_TIMEZONE ?? DEFAULT_APP_TIMEZONE,
   swagger: {
     enabled: process.env.SWAGGER_ENABLED
       ? process.env.SWAGGER_ENABLED === 'true'

@@ -18,6 +18,7 @@ PostgreSQL.
 | i18n           | nestjs-i18n (`en`, `vi`)             |
 | API docs       | Swagger / OpenAPI at `/docs`         |
 | Health         | @nestjs/terminus (Postgres + Redis)  |
+| Realtime       | Socket.IO 4 (@nestjs/websockets)     |
 | Tests          | Jest (unit) + Supertest (e2e)        |
 
 ## Requirements
@@ -118,6 +119,10 @@ and the docs must not move when the API version does.
 | POST   | `/orders/:code/cancel`       | Bearer | default                | Cancel a PENDING order, stock goes back        |
 | POST   | `/product-suggestions`       | Bearer | 10 / hour / token      | Suggest a product; at most 5 waiting for review |
 | GET    | `/product-suggestions`       | Bearer | default                | My suggestions with the admin decision         |
+| GET    | `/chat/conversations`        | Bearer | default                | My conversation with the shop (opened on first call); every active one for an admin |
+| GET    | `/chat/conversations/:id/messages` | Bearer | default          | Messages newest first, `before` cursor + `limit` (default 50) |
+| POST   | `/chat/conversations/:id/messages` | Bearer | 30 / min / token | Send a message; pushed live as `message:new` |
+| POST   | `/chat/conversations/:id/read` | Bearer | default              | Mark the other side's messages as read        |
 | GET    | `/admin/users`               | Admin  | default                | List accounts: `q`, `status`, `role`, paging   |
 | GET    | `/admin/users/:id`           | Admin  | default                | One account + orders count / spent / last      |
 | PATCH  | `/admin/users/:id/status`    | Admin  | default                | Lock (`INACTIVE`) or unlock (`ACTIVE`)         |
@@ -315,6 +320,46 @@ NX EX`, released by a Lua compare-and-delete. The monthly report also claims
 moment later does not send it twice. When Redis cannot be reached the run is
 skipped and logged; `job:run` sends it by hand under the same lock.
 
+### Chat
+
+Each customer has one conversation with the shop, opened by their first
+`GET /chat/conversations`; every admin can read and answer any of them.
+History pages by cursor: pass the `createdAt` of the oldest message shown as
+`before`. A message never shares its instant with another one of the same
+conversation, so a page never skips or repeats one.
+
+Live messages go through the Socket.IO namespace `/chat` on the API port:
+
+```js
+const socket = io('http://localhost:3001/chat', {
+  auth: { token: accessToken },
+  extraHeaders: { 'x-lang': 'vi' },
+});
+socket.on('message:new', ({ message }) => render(message));
+socket.on('error', ({ code, message }) => warn(code, message));
+const { message } = await socket.emitWithAck('message:send', {
+  conversationId,
+  content: 'Xin chào shop',
+});
+```
+
+| Direction | Event | Payload |
+| --- | --- | --- |
+| client -> server | `message:send` | `{ conversationId, content }`; the ack is `{ message }`, 30 per minute per account |
+| server -> client | `message:new` | `{ message }`, to the customer and to every admin, also for messages sent over REST |
+| server -> client | `error` | `{ code, message }`, `code` being the HTTP status name (`BAD_REQUEST`, `NOT_FOUND`, `TOO_MANY_REQUESTS`...) |
+
+A missing, invalid, expired or revoked token fails the handshake with a
+`connect_error` whose `data` is `{ code, message }`. Every event checks the
+token again, so a token logged out or an account locked since the handshake
+gets `UNAUTHORIZED` / `FORBIDDEN` and the socket is closed; it is also closed
+when the token expires. Messages are in the language of the handshake
+(`x-lang`, `Accept-Language`, or `?lang=` in the connection URL).
+
+Rooms live in the memory of one process. Running several API instances needs
+the Socket.IO Redis adapter (`@socket.io/redis-adapter`) so a message sent on
+one instance reaches sockets held by another; that is out of scope here.
+
 ### Health
 
 ```bash
@@ -487,11 +532,13 @@ src/
   cart/         the shopping cart
   orders/       checkout, order history, status machine, admin order management
   reviews/      product reviews and the rating aggregate
+  chat/         customer <-> admin chat: REST history and the /chat gateway
   cache/        Redis cache with generation-based invalidation
   health/       terminus health check of Postgres and Redis
   console/      nest-commander commands and the seeders behind them
   mail/         BullMQ queue and worker, Handlebars templates
-  common/       error filter, roles guard, decorators, throttling, pagination
+  common/       error filters, roles guard, decorators, throttling, pagination,
+                socket auth / language / error helpers
   config/       typed config namespaces, env validation, app + swagger setup
   database/     TypeORM data source, transaction hooks, migrations, seeders
   redis/        shared ioredis client

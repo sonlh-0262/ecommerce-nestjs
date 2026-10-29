@@ -9,13 +9,19 @@ import { I18nService } from 'nestjs-i18n';
 
 import { IS_OPTIONAL_AUTH_KEY } from '../../common/decorators/optional-auth.decorator';
 import { IS_PUBLIC_KEY } from '../../common/decorators/public.decorator';
+import {
+  AuthenticatedSocket,
+  socketToken,
+} from '../../common/sockets/authenticated-socket';
 import { JWT_STRATEGY_NAME } from '../auth.constants';
+import { AuthService } from '../auth.service';
 
 @Injectable()
 export class JwtAuthGuard extends AuthGuard(JWT_STRATEGY_NAME) {
   constructor(
     private readonly reflector: Reflector,
     private readonly i18n: I18nService,
+    private readonly auth: AuthService,
   ) {
     super();
   }
@@ -23,6 +29,12 @@ export class JwtAuthGuard extends AuthGuard(JWT_STRATEGY_NAME) {
   canActivate(context: ExecutionContext) {
     if (this.flagged(IS_PUBLIC_KEY, context)) {
       return true;
+    }
+
+    if (context.getType() === 'ws') {
+      return this.authenticateSocket(
+        context.switchToWs().getClient<AuthenticatedSocket>(),
+      );
     }
 
     return super.canActivate(context);
@@ -55,6 +67,14 @@ export class JwtAuthGuard extends AuthGuard(JWT_STRATEGY_NAME) {
     }
 
     throw new UnauthorizedException(this.i18n.t('auth.UNAUTHORIZED'));
+  }
+
+  private async authenticateSocket(
+    socket: AuthenticatedSocket,
+  ): Promise<boolean> {
+    socket.data.user = await this.auth.authenticate(socketToken(socket));
+
+    return true;
   }
 
   private flagged(key: string, context: ExecutionContext): boolean {

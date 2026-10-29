@@ -19,6 +19,7 @@ import { AuthModule } from './auth/auth.module';
 import { CartModule } from './cart/cart.module';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
 import { CategoriesModule } from './categories/categories.module';
+import { ChatModule } from './chat/chat.module';
 import {
   LANGUAGE_FALLBACKS,
   LANGUAGE_HEADER,
@@ -138,6 +139,7 @@ import { UsersModule } from './users/users.module';
     ReviewsModule,
     StatsModule,
     ProductSuggestionsModule,
+    ChatModule,
     HealthModule,
   ],
   providers: [

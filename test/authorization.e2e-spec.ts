@@ -2,6 +2,7 @@ import request from 'supertest';
 
 import { CartResponseDto } from '../src/cart/dto/cart.dto';
 import { Category } from '../src/categories/entities/category.entity';
+import { ConversationsResponseDto } from '../src/chat/dto/conversation.dto';
 import { OrderStatus } from '../src/orders/enums/order-status.enum';
 import { PaymentMethod } from '../src/orders/enums/payment-method.enum';
 import {
@@ -35,6 +36,7 @@ import {
   AUTH_PATHS,
   CART_PATHS,
   CATEGORIES_PATH,
+  CHAT_CONVERSATIONS_PATH,
   HEALTH_PATH,
   ORDERS_PATH,
   PRODUCTS_PATH,
@@ -44,6 +46,8 @@ import {
   SUGGESTIONS_PATH,
   TEST_RECEIVER,
   TEST_SUGGESTION,
+  conversationMessagesPath,
+  conversationReadPath,
   productReviewsPath,
   productSharePath,
 } from './support/test.constants';
@@ -180,6 +184,16 @@ class Fixtures {
         .expect(201);
 
       return (response.body as SuggestionResponseDto).suggestion.id;
+    });
+  }
+
+  conversation(): Promise<string> {
+    return this.once('conversation', async () => {
+      const response = await actingAs(this.ctx, this.accounts.user)
+        .get(CHAT_CONVERSATIONS_PATH)
+        .expect(200);
+
+      return (response.body as ConversationsResponseDto).conversations[0].id;
     });
   }
 
@@ -462,6 +476,33 @@ const SIGNED_IN_ROUTES: RouteCase[] = [
     route: `GET ${SUGGESTIONS_PATH}`,
     expected: signedIn(),
     build: at(SUGGESTIONS_PATH),
+  },
+  {
+    route: `GET ${CHAT_CONVERSATIONS_PATH}`,
+    expected: signedIn(),
+    build: at(CHAT_CONVERSATIONS_PATH),
+  },
+  {
+    route: `GET ${CHAT_CONVERSATIONS_PATH}/:id/messages`,
+    expected: signedIn(),
+    build: async (fx) => ({
+      path: conversationMessagesPath(await fx.conversation()),
+    }),
+  },
+  {
+    route: `POST ${CHAT_CONVERSATIONS_PATH}/:id/messages`,
+    expected: signedIn(201),
+    build: async (fx) => ({
+      path: conversationMessagesPath(await fx.conversation()),
+      body: { message: { content: 'Xin chào shop' } },
+    }),
+  },
+  {
+    route: `POST ${CHAT_CONVERSATIONS_PATH}/:id/read`,
+    expected: signedIn(),
+    build: async (fx) => ({
+      path: conversationReadPath(await fx.conversation()),
+    }),
   },
 ];
 

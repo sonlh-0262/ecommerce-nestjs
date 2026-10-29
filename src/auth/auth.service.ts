@@ -10,12 +10,14 @@ import { assertAccountActive } from './account-status';
 import { DUMMY_PASSWORD_HASH } from './auth.constants';
 import { LoginUserBodyDto } from './dto/login.dto';
 import { AuthSession } from './interfaces/auth-session.interface';
+import { AuthenticatedUser } from './interfaces/authenticated-user.interface';
 import { AuthenticationResult } from './interfaces/authentication-result.interface';
 import {
   JwtPayload,
   JwtPayloadClaims,
 } from './interfaces/jwt-payload.interface';
 import { passwordVersion } from './password-version';
+import { JwtStrategy } from './strategies/jwt.strategy';
 import { TokenBlacklistService } from './token-blacklist.service';
 
 @Injectable()
@@ -27,6 +29,7 @@ export class AuthService {
     private readonly passwordService: PasswordService,
     private readonly jwtService: JwtService,
     private readonly tokenBlacklist: TokenBlacklistService,
+    private readonly jwtStrategy: JwtStrategy,
     private readonly i18n: I18nService,
   ) {}
 
@@ -55,6 +58,19 @@ export class AuthService {
     this.logger.log(`Logged in user ${user.username} (${user.id})`);
 
     return { user, session: this.issueSession(user) };
+  }
+
+  async authenticate(token: unknown): Promise<AuthenticatedUser> {
+    const payload =
+      typeof token === 'string'
+        ? await this.jwtService.verifyAsync<JwtPayload>(token).catch(() => null)
+        : null;
+
+    if (!payload) {
+      throw new UnauthorizedException(this.i18n.t('auth.UNAUTHORIZED'));
+    }
+
+    return this.jwtStrategy.validate(payload);
   }
 
   async logout(jti: string, expiresAt: number): Promise<boolean> {

@@ -7,3 +7,7 @@ export class MessageResponseDto {
   })
   message: string;
 }
+
+export function toMessageResponse(message: string): MessageResponseDto {
+  return { message };
+}

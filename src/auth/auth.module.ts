@@ -32,6 +32,7 @@ import { TokenBlacklistService } from './token-blacklist.service';
             expiresIn: config.jwtExpiresIn as JwtSignOptions['expiresIn'],
             issuer: config.jwtIssuer,
           },
+          verifyOptions: { issuer: config.jwtIssuer },
         };
       },
     }),

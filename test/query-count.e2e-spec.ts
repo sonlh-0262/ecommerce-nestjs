@@ -4,6 +4,8 @@ import request from 'supertest';
 import { CacheService } from '../src/cache/cache.service';
 import { CategoriesResponseDto } from '../src/categories/dto/category.dto';
 import { Category } from '../src/categories/entities/category.entity';
+import { Conversation } from '../src/chat/entities/conversation.entity';
+import { Message } from '../src/chat/entities/message.entity';
 import { CACHE_RESOURCES } from '../src/common/constants/cache-keys';
 import { OrderStatus } from '../src/orders/enums/order-status.enum';
 import { ProductSuggestion } from '../src/product-suggestions/entities/product-suggestion.entity';
@@ -22,6 +24,7 @@ import {
   ADMIN_SUGGESTIONS_PATH,
   ADMIN_USERS_PATH,
   CATEGORIES_PATH,
+  CHAT_CONVERSATIONS_PATH,
   ORDERS_PATH,
   PRODUCTS_PATH,
   TEST_SUGGESTION,
@@ -84,6 +87,18 @@ describe('Query counts and cache (e2e)', () => {
       await ctx.dataSource
         .getRepository(ProductSuggestion)
         .insert({ ...TEST_SUGGESTION, userId: reviewer.id });
+
+      const sentAt = new Date();
+      const conversation = await ctx.dataSource
+        .getRepository(Conversation)
+        .save({ userId: reviewer.id, lastMessageAt: sentAt });
+
+      await ctx.dataSource.getRepository(Message).insert({
+        conversationId: conversation.id,
+        senderId: reviewer.id,
+        content: 'Xin chào shop',
+        createdAt: sentAt,
+      });
     }
   });
 
@@ -198,6 +213,13 @@ describe('Query counts and cache (e2e)', () => {
       caller: 'admin',
       listKey: 'suggestions',
       queries: 4,
+    },
+    {
+      name: 'GET /chat/conversations (admin)',
+      path: () => CHAT_CONVERSATIONS_PATH,
+      caller: 'admin',
+      listKey: 'conversations',
+      queries: 6,
     },
     {
       name: 'GET /admin/stats/best-sellers',

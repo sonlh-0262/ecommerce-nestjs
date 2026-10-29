@@ -12,3 +12,5 @@ export const SECONDS_PER_DAY =
 export const MILLISECONDS_PER_DAY = SECONDS_PER_DAY * 1000;
 
 export const MONTHS_PER_YEAR = 12;
+
+export const MAX_TIMER_DELAY_MS = 2_147_483_647;

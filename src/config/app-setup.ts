@@ -1,13 +1,10 @@
 import { INestApplication, RequestMethod } from '@nestjs/common';
-import {
-  I18nService,
-  I18nValidationExceptionFilter,
-  I18nValidationPipe,
-} from 'nestjs-i18n';
+import { I18nService, I18nValidationExceptionFilter } from 'nestjs-i18n';
 
 import { HEALTH_ROUTE } from '../common/constants/routes';
 import { toErrorResponse } from '../common/dto/error-response.dto';
 import { AllExceptionsFilter } from '../common/filters/all-exceptions.filter';
+import { createValidationPipe } from '../common/pipes/validation.pipe';
 import { AppConfig } from './configuration';
 
 /**
@@ -33,14 +30,7 @@ export function configureApp(
 
   // `I18nValidationPipe` is a `ValidationPipe` whose errors carry translation
   // keys, which the filter below renders in the request language.
-  app.useGlobalPipes(
-    new I18nValidationPipe({
-      whitelist: true,
-      forbidNonWhitelisted: true,
-      transform: true,
-      transformOptions: { enableImplicitConversion: true },
-    }),
-  );
+  app.useGlobalPipes(createValidationPipe());
 
   app.useGlobalFilters(
     new AllExceptionsFilter(app.get(I18nService)),

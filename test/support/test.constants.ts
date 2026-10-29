@@ -97,3 +97,13 @@ export const TEST_SUGGESTION = {
   name: 'Bình giữ nhiệt inox',
   description: 'Loại giữ nóng 12 tiếng, có quai xách.',
 };
+
+export const CHAT_CONVERSATIONS_PATH = `${API_BASE_PATH}/chat/conversations`;
+
+export const conversationMessagesPath = (id: string) =>
+  `${CHAT_CONVERSATIONS_PATH}/${id}/messages`;
+
+export const conversationReadPath = (id: string) =>
+  `${CHAT_CONVERSATIONS_PATH}/${id}/read`;
+
+export const SOCKET_EVENT_TIMEOUT_MS = 3000;

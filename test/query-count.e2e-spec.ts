@@ -4,7 +4,11 @@ import request from 'supertest';
 import { CacheService } from '../src/cache/cache.service';
 import { CategoriesResponseDto } from '../src/categories/dto/category.dto';
 import { Category } from '../src/categories/entities/category.entity';
+import { Conversation } from '../src/chat/entities/conversation.entity';
+import { Message } from '../src/chat/entities/message.entity';
 import { CACHE_RESOURCES } from '../src/common/constants/cache-keys';
+import { OrderStatus } from '../src/orders/enums/order-status.enum';
+import { ProductSuggestion } from '../src/product-suggestions/entities/product-suggestion.entity';
 import { Product } from '../src/products/entities/product.entity';
 import { REDIS_CLIENT } from '../src/redis/redis.constants';
 import { UserRole } from '../src/users/enums/user-role.enum';
@@ -16,10 +20,14 @@ import { createTestApp } from './support/test-app';
 import {
   ADMIN_CATEGORIES_PATH,
   ADMIN_ORDERS_PATH,
+  ADMIN_STATS_PATHS,
+  ADMIN_SUGGESTIONS_PATH,
   ADMIN_USERS_PATH,
   CATEGORIES_PATH,
+  CHAT_CONVERSATIONS_PATH,
   ORDERS_PATH,
   PRODUCTS_PATH,
+  TEST_SUGGESTION,
   productReviewsPath,
 } from './support/test.constants';
 
@@ -68,8 +76,29 @@ describe('Query counts and cache (e2e)', () => {
     reviewed = products[0];
 
     for (const product of products) {
+      const reviewer = await ctx.users.create();
+
       await ctx.orders.order(buyer.user, product);
-      await ctx.orders.review(await ctx.users.create(), reviewed);
+      await ctx.orders.order(buyer.user, product, {
+        status: OrderStatus.Delivered,
+        deliveredAt: new Date(),
+      });
+      await ctx.orders.review(reviewer, reviewed);
+      await ctx.dataSource
+        .getRepository(ProductSuggestion)
+        .insert({ ...TEST_SUGGESTION, userId: reviewer.id });
+
+      const sentAt = new Date();
+      const conversation = await ctx.dataSource
+        .getRepository(Conversation)
+        .save({ userId: reviewer.id, lastMessageAt: sentAt });
+
+      await ctx.dataSource.getRepository(Message).insert({
+        conversationId: conversation.id,
+        senderId: reviewer.id,
+        content: 'Xin chào shop',
+        createdAt: sentAt,
+      });
     }
   });
 
@@ -178,6 +207,27 @@ describe('Query counts and cache (e2e)', () => {
       listKey: 'users',
       queries: 4,
     },
+    {
+      name: 'GET /admin/product-suggestions',
+      path: () => ADMIN_SUGGESTIONS_PATH,
+      caller: 'admin',
+      listKey: 'suggestions',
+      queries: 4,
+    },
+    {
+      name: 'GET /chat/conversations (admin)',
+      path: () => CHAT_CONVERSATIONS_PATH,
+      caller: 'admin',
+      listKey: 'conversations',
+      queries: 6,
+    },
+    {
+      name: 'GET /admin/stats/best-sellers',
+      path: () => ADMIN_STATS_PATHS.bestSellers,
+      caller: 'admin',
+      listKey: 'products',
+      queries: 3,
+    },
   ];
 
   describe('no N+1 on list endpoints', () => {
@@ -193,6 +243,16 @@ describe('Query counts and cache (e2e)', () => {
         expect(large.queries).toHaveLength(endpoint.queries);
       },
     );
+
+    it('reads the stats overview in three queries besides the session', async () => {
+      await invalidateCache();
+
+      const queries = await recordQueries(ctx.dataSource, () =>
+        get(ADMIN_STATS_PATHS.overview, 'admin').expect(200),
+      );
+
+      expect(queries).toHaveLength(4);
+    });
 
     it('reads a user with their order statistics in a bounded number of queries', async () => {
       const queries = await recordQueries(ctx.dataSource, () =>

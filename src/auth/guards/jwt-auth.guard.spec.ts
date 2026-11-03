@@ -8,13 +8,16 @@ import { I18nService } from 'nestjs-i18n';
 
 import { IS_OPTIONAL_AUTH_KEY } from '../../common/decorators/optional-auth.decorator';
 import { IS_PUBLIC_KEY } from '../../common/decorators/public.decorator';
+import { AuthService } from '../auth.service';
 import { JwtAuthGuard } from './jwt-auth.guard';
 
 describe('JwtAuthGuard', () => {
   const i18nMock = { t: jest.fn((key: string) => key) };
+  const authMock = { authenticate: jest.fn() };
   const guard = new JwtAuthGuard(
     new Reflector(),
     i18nMock as unknown as I18nService,
+    authMock as unknown as AuthService,
   );
 
   const passportCanActivate = jest.spyOn(
@@ -37,8 +40,16 @@ describe('JwtAuthGuard', () => {
     return {
       getHandler: () => handler,
       getClass: () => Controller,
+      getType: () => 'http',
     } as unknown as ExecutionContext;
   };
+
+  const socketContextFor = (socket: object): ExecutionContext =>
+    ({
+      ...contextFor(),
+      getType: () => 'ws',
+      switchToWs: () => ({ getClient: () => socket }),
+    }) as unknown as ExecutionContext;
 
   beforeEach(() => {
     passportCanActivate.mockResolvedValue(true);
@@ -80,6 +91,32 @@ describe('JwtAuthGuard', () => {
       await guard.canActivate(contextFor(false));
 
       expect(passportCanActivate).toHaveBeenCalled();
+    });
+
+    it('authenticates every socket event with the handshake token', async () => {
+      const authenticated = { user: { id: 'user-id' }, jti: 'j', expiresAt: 1 };
+      const socket = { handshake: { auth: { token: 'jwt' } }, data: {} };
+
+      authMock.authenticate.mockResolvedValue(authenticated);
+
+      await expect(guard.canActivate(socketContextFor(socket))).resolves.toBe(
+        true,
+      );
+      expect(authMock.authenticate).toHaveBeenCalledWith('jwt');
+      expect(socket.data).toEqual({ user: authenticated });
+      expect(passportCanActivate).not.toHaveBeenCalled();
+    });
+
+    it('refuses a socket event once its token stopped being valid', async () => {
+      const revoked = new UnauthorizedException('auth.TOKEN_REVOKED');
+      const socket = { handshake: { auth: { token: 'jwt' } }, data: {} };
+
+      authMock.authenticate.mockRejectedValue(revoked);
+
+      await expect(guard.canActivate(socketContextFor(socket))).rejects.toBe(
+        revoked,
+      );
+      expect(socket.data).toEqual({});
     });
   });
 

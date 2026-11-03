@@ -2,6 +2,7 @@ import { BullModule } from '@nestjs/bullmq';
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { APP_GUARD } from '@nestjs/core';
+import { ScheduleModule } from '@nestjs/schedule';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import Redis from 'ioredis';
 import {
@@ -18,6 +19,7 @@ import { AuthModule } from './auth/auth.module';
 import { CartModule } from './cart/cart.module';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
 import { CategoriesModule } from './categories/categories.module';
+import { ChatModule } from './chat/chat.module';
 import {
   LANGUAGE_FALLBACKS,
   LANGUAGE_HEADER,
@@ -51,10 +53,12 @@ import { DatabaseModule } from './database/database.module';
 import { HealthModule } from './health/health.module';
 import { MailModule } from './mail/mail.module';
 import { OrdersModule } from './orders/orders.module';
+import { ProductSuggestionsModule } from './product-suggestions/product-suggestions.module';
 import { ProductsModule } from './products/products.module';
 import { REDIS_CLIENT } from './redis/redis.constants';
 import { RedisModule } from './redis/redis.module';
 import { ReviewsModule } from './reviews/reviews.module';
+import { StatsModule } from './stats/stats.module';
 import { UsersModule } from './users/users.module';
 
 @Module({
@@ -121,6 +125,7 @@ import { UsersModule } from './users/users.module';
           configService.getOrThrow<RedisConfig>(REDIS_CONFIG_KEY),
         ),
     }),
+    ScheduleModule.forRoot(),
     DatabaseModule,
     RedisModule,
     MailModule,
@@ -132,6 +137,9 @@ import { UsersModule } from './users/users.module';
     CartModule,
     OrdersModule,
     ReviewsModule,
+    StatsModule,
+    ProductSuggestionsModule,
+    ChatModule,
     HealthModule,
   ],
   providers: [

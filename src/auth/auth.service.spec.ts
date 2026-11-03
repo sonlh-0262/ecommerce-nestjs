@@ -10,6 +10,7 @@ import { UsersService } from '../users/users.service';
 import { DUMMY_PASSWORD_HASH } from './auth.constants';
 import { AuthService } from './auth.service';
 import { JwtPayloadClaims } from './interfaces/jwt-payload.interface';
+import { JwtStrategy } from './strategies/jwt.strategy';
 import { TokenBlacklistService } from './token-blacklist.service';
 
 describe('AuthService', () => {
@@ -26,7 +27,9 @@ describe('AuthService', () => {
   const jwtServiceMock = {
     sign: jest.fn(() => TOKEN),
     decode: jest.fn(() => ({ iat: ISSUED_AT, exp: EXPIRES_AT })),
+    verifyAsync: jest.fn(),
   };
+  const jwtStrategyMock = { validate: jest.fn() };
   const i18nServiceMock = { t: jest.fn((key: string) => key) };
 
   /**
@@ -50,6 +53,7 @@ describe('AuthService', () => {
         { provide: PasswordService, useValue: passwordServiceMock },
         { provide: JwtService, useValue: jwtServiceMock },
         { provide: TokenBlacklistService, useValue: tokenBlacklistMock },
+        { provide: JwtStrategy, useValue: jwtStrategyMock },
         { provide: I18nService, useValue: i18nServiceMock },
       ],
     }).compile();
@@ -204,6 +208,50 @@ describe('AuthService', () => {
     authService.issueSession(buildUser({ passwordChangedAt: changedAt }));
 
     expect(signCalls()[0][0].pwv).toBe(changedAt.getTime());
+  });
+
+  describe('authenticate', () => {
+    it('verifies the token, then runs the same checks as an HTTP request', async () => {
+      const payload = { sub: 'user-id', jti: 'token-id', exp: EXPIRES_AT };
+      const authenticated = { user: buildUser(), jti: 'token-id' };
+
+      jwtServiceMock.verifyAsync.mockResolvedValue(payload);
+      jwtStrategyMock.validate.mockResolvedValue(authenticated);
+
+      await expect(authService.authenticate(TOKEN)).resolves.toBe(
+        authenticated,
+      );
+      expect(jwtServiceMock.verifyAsync).toHaveBeenCalledWith(TOKEN);
+      expect(jwtStrategyMock.validate).toHaveBeenCalledWith(payload);
+    });
+
+    it('answers a forged or expired token with 401', async () => {
+      jwtServiceMock.verifyAsync.mockRejectedValue(new Error('jwt expired'));
+
+      await expect(authService.authenticate(TOKEN)).rejects.toThrow(
+        new UnauthorizedException('auth.UNAUTHORIZED'),
+      );
+      expect(jwtStrategyMock.validate).not.toHaveBeenCalled();
+    });
+
+    it.each([undefined, 42, { token: TOKEN }])(
+      'answers a missing token (%p) with 401 without verifying it',
+      async (token) => {
+        await expect(authService.authenticate(token)).rejects.toThrow(
+          UnauthorizedException,
+        );
+        expect(jwtServiceMock.verifyAsync).not.toHaveBeenCalled();
+      },
+    );
+
+    it('keeps the status of a rejection raised by the strategy', async () => {
+      const locked = new ForbiddenException('auth.ACCOUNT_INACTIVE');
+
+      jwtServiceMock.verifyAsync.mockResolvedValue({ sub: 'user-id' });
+      jwtStrategyMock.validate.mockRejectedValue(locked);
+
+      await expect(authService.authenticate(TOKEN)).rejects.toBe(locked);
+    });
   });
 
   describe('logout', () => {

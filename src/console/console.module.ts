@@ -7,7 +7,9 @@ import { CategoriesModule } from '../categories/categories.module';
 import { OrdersModule } from '../orders/orders.module';
 import { ProductsModule } from '../products/products.module';
 import { ReviewsModule } from '../reviews/reviews.module';
+import { StatsModule } from '../stats/stats.module';
 import { UsersModule } from '../users/users.module';
+import { RunJobCommand } from './commands/run-job.command';
 import { SeedAdminCommand } from './commands/seed-admin.command';
 import { SeedCategoriesCommand } from './commands/seed-categories.command';
 import { SeedDemoCommand } from './commands/seed-demo.command';
@@ -31,12 +33,14 @@ import { SeedDataReset } from './seeders/seed-data-reset';
     CartModule,
     OrdersModule,
     ReviewsModule,
+    StatsModule,
   ],
   providers: [
     SeedAdminCommand,
     SeedCategoriesCommand,
     SeedProductsCommand,
     SeedDemoCommand,
+    RunJobCommand,
     AdminSeeder,
     CategoriesSeeder,
     ProductsSeeder,

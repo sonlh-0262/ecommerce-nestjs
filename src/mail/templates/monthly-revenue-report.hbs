@@ -1,0 +1,49 @@
+<p>{{greeting}}</p>
+<p>{{intro}}</p>
+<table role="presentation" width="100%" cellpadding="8" cellspacing="0" style="border-collapse:collapse;margin:16px 0;font-size:14px;">
+  <tbody>
+    <tr style="border-bottom:1px solid #e5e7eb;">
+      <td>{{labels.revenue}}</td>
+      <td style="text-align:right;font-weight:bold;">{{revenue}}</td>
+    </tr>
+    <tr style="border-bottom:1px solid #e5e7eb;">
+      <td>{{labels.orders}}</td>
+      <td style="text-align:right;">{{orders}}</td>
+    </tr>
+    <tr style="border-bottom:1px solid #e5e7eb;">
+      <td>{{labels.previousRevenue}}</td>
+      <td style="text-align:right;">{{previousRevenue}}</td>
+    </tr>
+    <tr style="border-bottom:1px solid #e5e7eb;">
+      <td>{{labels.previousOrders}}</td>
+      <td style="text-align:right;">{{previousOrders}}</td>
+    </tr>
+    <tr>
+      <td>{{labels.change}}</td>
+      <td style="text-align:right;">{{change}}</td>
+    </tr>
+  </tbody>
+</table>
+<p><strong>{{labels.topProducts}}</strong></p>
+{{#if topProducts.length}}
+  <table role="presentation" width="100%" cellpadding="8" cellspacing="0" style="border-collapse:collapse;margin:16px 0;font-size:14px;">
+    <thead>
+      <tr style="background:#f3f4f6;text-align:left;">
+        <th>{{labels.product}}</th>
+        <th style="text-align:center;">{{labels.soldQuantity}}</th>
+        <th style="text-align:right;">{{labels.productRevenue}}</th>
+      </tr>
+    </thead>
+    <tbody>
+      {{#each topProducts}}
+        <tr style="border-bottom:1px solid #e5e7eb;">
+          <td>{{name}}</td>
+          <td style="text-align:center;">{{soldQuantity}}</td>
+          <td style="text-align:right;">{{revenue}}</td>
+        </tr>
+      {{/each}}
+    </tbody>
+  </table>
+{{else}}
+  <p>{{noSales}}</p>
+{{/if}}

@@ -37,11 +37,37 @@ export interface OrderStatusChangedMailJob extends GreetedMailJob {
   reason: string | null;
 }
 
+export interface OrderAutoCancelledMailJob extends GreetedMailJob {
+  orderCode: string;
+  days: number;
+}
+
+export interface MonthlyReportTotals {
+  orders: number;
+  revenue: number;
+}
+
+export interface MonthlyReportProduct {
+  name: string;
+  soldQuantity: number;
+  revenue: number;
+}
+
+export interface MonthlyRevenueReportMailJob extends GreetedMailJob {
+  year: number;
+  month: number;
+  current: MonthlyReportTotals;
+  previous: MonthlyReportTotals;
+  topProducts: MonthlyReportProduct[];
+}
+
 export interface MailJobPayloadMap {
   [MAIL_JOB.VerifyEmail]: ActionMailJob;
   [MAIL_JOB.ResetPassword]: ActionMailJob;
   [MAIL_JOB.OrderCreated]: OrderCreatedMailJob;
   [MAIL_JOB.OrderStatusChanged]: OrderStatusChangedMailJob;
+  [MAIL_JOB.OrderAutoCancelled]: OrderAutoCancelledMailJob;
+  [MAIL_JOB.MonthlyRevenueReport]: MonthlyRevenueReportMailJob;
 }
 
 export type MailJobPayload<T extends MailJobName> = MailJobPayloadMap[T];

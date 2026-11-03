@@ -18,6 +18,7 @@ PostgreSQL.
 | i18n           | nestjs-i18n (`en`, `vi`)             |
 | API docs       | Swagger / OpenAPI at `/docs`         |
 | Health         | @nestjs/terminus (Postgres + Redis)  |
+| Realtime       | Socket.IO 4 (@nestjs/websockets)     |
 | Tests          | Jest (unit) + Supertest (e2e)        |
 
 ## Requirements
@@ -102,6 +103,7 @@ and the docs must not move when the API version does.
 | GET    | `/products/featured`         | Guest  | default                | Featured products, best sellers first; cached  |
 | GET    | `/products/:slug`            | Guest  | default                | One published product with images              |
 | GET    | `/products/:slug/reviews`    | Guest  | default                | Reviews newest first, `rating` filter, star distribution |
+| GET    | `/products/:slug/share`      | Guest  | default                | Share links (Facebook, X) and Open Graph fields of a published product |
 | POST   | `/products/:slug/reviews`    | Bearer | default                | Review a product from one of my delivered orders, once |
 | PATCH  | `/reviews/:id`               | Bearer | default                | Edit my review; the product average follows    |
 | DELETE | `/reviews/:id`               | Bearer | default                | Delete my review, or any review as an admin    |
@@ -115,6 +117,12 @@ and the docs must not move when the API version does.
 | GET    | `/orders/:code`              | Bearer | default                | One of my orders with items and history        |
 | POST   | `/orders/:code/payment`      | Bearer | default                | Declare a bank transfer (mock payment)         |
 | POST   | `/orders/:code/cancel`       | Bearer | default                | Cancel a PENDING order, stock goes back        |
+| POST   | `/product-suggestions`       | Bearer | 10 / hour / token      | Suggest a product; at most 5 waiting for review |
+| GET    | `/product-suggestions`       | Bearer | default                | My suggestions with the admin decision         |
+| GET    | `/chat/conversations`        | Bearer | default                | My conversation with the shop (opened on first call); every active one for an admin |
+| GET    | `/chat/conversations/:id/messages` | Bearer | default          | Messages newest first, `before` cursor + `limit` (default 50) |
+| POST   | `/chat/conversations/:id/messages` | Bearer | 30 / min / token | Send a message; pushed live as `message:new` |
+| POST   | `/chat/conversations/:id/read` | Bearer | default              | Mark the other side's messages as read        |
 | GET    | `/admin/users`               | Admin  | default                | List accounts: `q`, `status`, `role`, paging   |
 | GET    | `/admin/users/:id`           | Admin  | default                | One account + orders count / spent / last      |
 | PATCH  | `/admin/users/:id/status`    | Admin  | default                | Lock (`INACTIVE`) or unlock (`ACTIVE`)         |
@@ -130,6 +138,11 @@ and the docs must not move when the API version does.
 | DELETE | `/admin/products/:id`        | Admin  | default                | Soft delete: ARCHIVED, removed from carts      |
 | POST   | `/admin/products/:id/images` | Admin  | default                | Upload 1-5 images (multipart `files`)          |
 | DELETE | `/admin/products/:id/images/:imageId` | Admin | default        | Delete an image; the next becomes thumbnail    |
+| GET    | `/admin/product-suggestions` | Admin  | default                | Every suggestion with its author: `status`, paging |
+| PATCH  | `/admin/product-suggestions/:id` | Admin | default            | Approve, or reject with a note, once           |
+| GET    | `/admin/stats/overview`      | Admin  | default                | Revenue, orders by status, products, customers over `from`-`to`; cached 5 min |
+| GET    | `/admin/stats/best-sellers`  | Admin  | default                | Products by units delivered, deleted ones included |
+| GET    | `/admin/stats/revenue`       | Admin  | default                | Revenue per month (`groupBy=month`) or year, empty periods at 0 |
 | GET    | `/health`                    | Guest  | none                   | Pings Postgres + Redis; 503 when one is down   |
 | GET    | `/docs`                      | Guest  | -                      | Swagger UI (`/docs-json` for the raw document) |
 
@@ -279,6 +292,73 @@ A review needs a `DELIVERED` order of mine containing the product (`403`
 otherwise) and is unique per product and account (`409`). `averageRating` and
 `reviewCount` on the product are recomputed from the reviews in the same
 transaction as every create, star change and delete.
+
+### Statistics and scheduled jobs
+
+```bash
+curl 'http://localhost:3001/api/v1/admin/stats/overview?from=2026-01-01T00:00:00%2B07:00&to=2027-01-01T00:00:00%2B07:00' -H "Authorization: Bearer $ADMIN_TOKEN"
+curl 'http://localhost:3001/api/v1/admin/stats/revenue?groupBy=month&year=2026' -H "Authorization: Bearer $ADMIN_TOKEN"
+docker compose exec api npm run console -- job:run monthly-revenue-report
+docker compose exec api npm run console -- job:run orders-auto-cancel
+```
+
+Revenue only counts `DELIVERED` orders, by the day they were delivered, in the
+`APP_TIMEZONE` zone. Ranges are `[from, to)`: `to` is excluded, and both
+default to the twelve months before now. `revenue` lists every period of the
+window, empty ones at `0`.
+
+Two jobs run on `@nestjs/schedule`:
+
+| Job | When | What |
+| --- | --- | --- |
+| `monthly-revenue-report` | 00:00 on the 1st, `APP_TIMEZONE` | Emails every active admin the month that ended against the month before, with the top 5 |
+| `orders-auto-cancel` | every hour | Cancels `PENDING` unpaid orders older than `ORDER_AUTO_CANCEL_DAYS`, puts the stock back, emails the customer (100 per run) |
+
+Each instance runs them, so Redis decides who does the work: `SET lock:<job>
+NX EX`, released by a Lua compare-and-delete. The monthly report also claims
+`lock:monthly-revenue-report:<yyyy-mm>` for a day, so an instance ticking a
+moment later does not send it twice. When Redis cannot be reached the run is
+skipped and logged; `job:run` sends it by hand under the same lock.
+
+### Chat
+
+Each customer has one conversation with the shop, opened by their first
+`GET /chat/conversations`; every admin can read and answer any of them.
+History pages by cursor: pass the `createdAt` of the oldest message shown as
+`before`. A message never shares its instant with another one of the same
+conversation, so a page never skips or repeats one.
+
+Live messages go through the Socket.IO namespace `/chat` on the API port:
+
+```js
+const socket = io('http://localhost:3001/chat', {
+  auth: { token: accessToken },
+  extraHeaders: { 'x-lang': 'vi' },
+});
+socket.on('message:new', ({ message }) => render(message));
+socket.on('error', ({ code, message }) => warn(code, message));
+const { message } = await socket.emitWithAck('message:send', {
+  conversationId,
+  content: 'Xin chào shop',
+});
+```
+
+| Direction | Event | Payload |
+| --- | --- | --- |
+| client -> server | `message:send` | `{ conversationId, content }`; the ack is `{ message }`, 30 per minute per account |
+| server -> client | `message:new` | `{ message }`, to the customer and to every admin, also for messages sent over REST |
+| server -> client | `error` | `{ code, message }`, `code` being the HTTP status name (`BAD_REQUEST`, `NOT_FOUND`, `TOO_MANY_REQUESTS`...) |
+
+A missing, invalid, expired or revoked token fails the handshake with a
+`connect_error` whose `data` is `{ code, message }`. Every event checks the
+token again, so a token logged out or an account locked since the handshake
+gets `UNAUTHORIZED` / `FORBIDDEN` and the socket is closed; it is also closed
+when the token expires. Messages are in the language of the handshake
+(`x-lang`, `Accept-Language`, or `?lang=` in the connection URL).
+
+Rooms live in the memory of one process. Running several API instances needs
+the Socket.IO Redis adapter (`@socket.io/redis-adapter`) so a message sent on
+one instance reaches sockets held by another; that is out of scope here.
 
 ### Health
 
@@ -435,7 +515,8 @@ startup by `src/config/env.validation.ts`. Those marked *prod* must be set when
 | Auth | `JWT_SECRET` (*prod*), `JWT_EXPIRES_IN`, `JWT_ISSUER`, `BCRYPT_SALT_ROUNDS` |
 | Rate limit | `THROTTLE_TTL`, `THROTTLE_LIMIT` |
 | Mail | `MAIL_HOST` (*prod*), `MAIL_PORT` (*prod*), `MAIL_USER`, `MAIL_PASSWORD`, `MAIL_FROM` (*prod*), `MAIL_FROM_NAME`, `APP_WEB_URL` (*prod*) |
-| Files / orders | `STORAGE_ROOT`, `SHIPPING_FEE` |
+| Links / time | `APP_API_URL` (*prod*, origin used for share images), `APP_TIMEZONE` (IANA name, default `Asia/Ho_Chi_Minh`) |
+| Files / orders | `STORAGE_ROOT`, `SHIPPING_FEE`, `ORDER_AUTO_CANCEL_DAYS` |
 | Seeding | `SEED_ADMIN_EMAIL`, `SEED_ADMIN_PASSWORD` |
 | Docker host ports | `API_HOST_PORT`, `DEBUG_HOST_PORT`, `DB_HOST_PORT`, `REDIS_HOST_PORT`, `MAILPIT_SMTP_HOST_PORT`, `MAILPIT_UI_HOST_PORT` |
 
@@ -451,11 +532,13 @@ src/
   cart/         the shopping cart
   orders/       checkout, order history, status machine, admin order management
   reviews/      product reviews and the rating aggregate
+  chat/         customer <-> admin chat: REST history and the /chat gateway
   cache/        Redis cache with generation-based invalidation
   health/       terminus health check of Postgres and Redis
   console/      nest-commander commands and the seeders behind them
   mail/         BullMQ queue and worker, Handlebars templates
-  common/       error filter, roles guard, decorators, throttling, pagination
+  common/       error filters, roles guard, decorators, throttling, pagination,
+                socket auth / language / error helpers
   config/       typed config namespaces, env validation, app + swagger setup
   database/     TypeORM data source, transaction hooks, migrations, seeders
   redis/        shared ioredis client

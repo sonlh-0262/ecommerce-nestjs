@@ -5,6 +5,7 @@ const GENERATION_SUFFIX = 'generation';
 export const CACHE_RESOURCES = {
   categories: 'categories',
   products: 'products',
+  stats: 'stats',
 } as const;
 
 export type CacheResource =

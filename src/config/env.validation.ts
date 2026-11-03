@@ -7,6 +7,7 @@ import {
   PASSWORD_STRENGTH_PATTERN,
 } from '../users/users.constants';
 import {
+  IANA_TIME_ZONE_PATTERN,
   JWT_DURATION_PATTERN,
   MAX_BCRYPT_SALT_ROUNDS,
   MAX_PORT,
@@ -14,6 +15,7 @@ import {
   MIN_BCRYPT_SALT_ROUNDS,
   MIN_DB_SLOW_QUERY_MS,
   MIN_JWT_SECRET_LENGTH,
+  MIN_ORDER_AUTO_CANCEL_DAYS,
   MIN_PORT,
   MIN_PRODUCTION_BCRYPT_SALT_ROUNDS,
   MIN_REDIS_DB_INDEX,
@@ -69,10 +71,13 @@ export interface EnvironmentVariables {
   MAIL_FROM?: string;
   MAIL_FROM_NAME?: string;
   APP_WEB_URL?: string;
+  APP_API_URL?: string;
+  APP_TIMEZONE?: string;
 
   STORAGE_ROOT?: string;
 
   SHIPPING_FEE?: number;
+  ORDER_AUTO_CANCEL_DAYS?: number;
 
   SEED_ADMIN_EMAIL?: string;
   SEED_ADMIN_PASSWORD?: string;
@@ -86,6 +91,20 @@ const requiredInProduction = <T extends Joi.Schema>(schema: T): T =>
   }) as T;
 
 const EMAIL_OPTIONS: Joi.EmailOptions = { tlds: { allow: false } };
+
+const PUBLIC_URL = Joi.string()
+  .uri({ scheme: WEB_URL_SCHEMES })
+  .pattern(NO_TRAILING_SLASH_PATTERN);
+
+const isTimeZone: Joi.CustomValidator<string> = (value, helpers) => {
+  try {
+    new Intl.DateTimeFormat(undefined, { timeZone: value });
+
+    return value;
+  } catch {
+    return helpers.error('any.invalid');
+  }
+};
 
 export const envValidationSchema = Joi.object<EnvironmentVariables>({
   NODE_ENV: Joi.string()
@@ -140,15 +159,20 @@ export const envValidationSchema = Joi.object<EnvironmentVariables>({
   MAIL_PASSWORD: Joi.string().allow('').optional(),
   MAIL_FROM: requiredInProduction(Joi.string().email(EMAIL_OPTIONS)),
   MAIL_FROM_NAME: Joi.string().min(1).optional(),
-  APP_WEB_URL: requiredInProduction(
-    Joi.string()
-      .uri({ scheme: WEB_URL_SCHEMES })
-      .pattern(NO_TRAILING_SLASH_PATTERN),
-  ),
+  APP_WEB_URL: requiredInProduction(PUBLIC_URL),
+  APP_API_URL: requiredInProduction(PUBLIC_URL),
+  APP_TIMEZONE: Joi.string()
+    .pattern(IANA_TIME_ZONE_PATTERN)
+    .custom(isTimeZone)
+    .optional(),
 
   STORAGE_ROOT: Joi.string().min(1).optional(),
 
   SHIPPING_FEE: Joi.number().integer().min(MIN_SHIPPING_FEE).optional(),
+  ORDER_AUTO_CANCEL_DAYS: Joi.number()
+    .integer()
+    .min(MIN_ORDER_AUTO_CANCEL_DAYS)
+    .optional(),
 
   SEED_ADMIN_EMAIL: Joi.string().email(EMAIL_OPTIONS).allow('').optional(),
   SEED_ADMIN_PASSWORD: Joi.string()

@@ -50,7 +50,7 @@ export async function createTestApp(
 ): Promise<TestContext> {
   const mail = new MailRecorder();
   const moduleFixture = await Test.createTestingModule({
-    imports: [AppModule],
+    imports: [options.module ?? AppModule],
   })
     .overrideProvider(MailQueueService)
     .useValue(mail)

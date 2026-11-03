@@ -2,6 +2,7 @@ import request from 'supertest';
 
 import { CartResponseDto } from '../src/cart/dto/cart.dto';
 import { Category } from '../src/categories/entities/category.entity';
+import { ConversationsResponseDto } from '../src/chat/dto/conversation.dto';
 import { OrderStatus } from '../src/orders/enums/order-status.enum';
 import { PaymentMethod } from '../src/orders/enums/payment-method.enum';
 import {
@@ -10,6 +11,8 @@ import {
 } from '../src/products/dto/product.dto';
 import { Product } from '../src/products/entities/product.entity';
 import { ProductStatus } from '../src/products/enums/product-status.enum';
+import { SuggestionResponseDto } from '../src/product-suggestions/dto/suggestion.dto';
+import { SuggestionStatus } from '../src/product-suggestions/enums/suggestion-status.enum';
 import { ReviewResponseDto } from '../src/reviews/dto/review.dto';
 import { UserRole } from '../src/users/enums/user-role.enum';
 import { UserStatus } from '../src/users/enums/user-status.enum';
@@ -25,20 +28,28 @@ import {
   ADMIN_CATEGORIES_PATH,
   ADMIN_ORDERS_PATH,
   ADMIN_PRODUCTS_PATH,
+  ADMIN_STATS_PATHS,
+  ADMIN_SUGGESTIONS_PATH,
   ADMIN_USERS_PATH,
   API_BASE_PATH,
   ATTACHMENTS_PATH,
   AUTH_PATHS,
   CART_PATHS,
   CATEGORIES_PATH,
+  CHAT_CONVERSATIONS_PATH,
   HEALTH_PATH,
   ORDERS_PATH,
   PRODUCTS_PATH,
   PROFILE_PATHS,
   REVIEWS_PATH,
   SEEDED_USER_PASSWORD,
+  SUGGESTIONS_PATH,
   TEST_RECEIVER,
+  TEST_SUGGESTION,
+  conversationMessagesPath,
+  conversationReadPath,
   productReviewsPath,
+  productSharePath,
 } from './support/test.constants';
 
 type Actor = 'guest' | 'user' | 'admin';
@@ -165,6 +176,27 @@ class Fixtures {
     });
   }
 
+  suggestion(): Promise<string> {
+    return this.once('suggestion', async () => {
+      const response = await actingAs(this.ctx, this.accounts.user)
+        .post(SUGGESTIONS_PATH)
+        .send({ suggestion: TEST_SUGGESTION })
+        .expect(201);
+
+      return (response.body as SuggestionResponseDto).suggestion.id;
+    });
+  }
+
+  conversation(): Promise<string> {
+    return this.once('conversation', async () => {
+      const response = await actingAs(this.ctx, this.accounts.user)
+        .get(CHAT_CONVERSATIONS_PATH)
+        .expect(200);
+
+      return (response.body as ConversationsResponseDto).conversations[0].id;
+    });
+  }
+
   private once<T>(key: string, build: () => Promise<T>): Promise<T> {
     if (!this.built.has(key)) {
       this.built.set(key, build());
@@ -214,6 +246,13 @@ const PUBLIC_ROUTES: RouteCase[] = [
     route: `GET ${ATTACHMENTS_PATH}/:id`,
     expected: open(),
     build: async (fx) => ({ path: await fx.publicImageUrl() }),
+  },
+  {
+    route: `GET ${PRODUCTS_PATH}/:slug/share`,
+    expected: open(),
+    build: async (fx) => ({
+      path: productSharePath((await fx.product('public')).slug),
+    }),
   },
 ];
 
@@ -424,6 +463,47 @@ const SIGNED_IN_ROUTES: RouteCase[] = [
       path: `${REVIEWS_PATH}/${await fx.review(account)}`,
     }),
   },
+  {
+    route: `POST ${SUGGESTIONS_PATH}`,
+    expected: signedIn(201),
+    build: () =>
+      Promise.resolve({
+        path: SUGGESTIONS_PATH,
+        body: { suggestion: TEST_SUGGESTION },
+      }),
+  },
+  {
+    route: `GET ${SUGGESTIONS_PATH}`,
+    expected: signedIn(),
+    build: at(SUGGESTIONS_PATH),
+  },
+  {
+    route: `GET ${CHAT_CONVERSATIONS_PATH}`,
+    expected: signedIn(),
+    build: at(CHAT_CONVERSATIONS_PATH),
+  },
+  {
+    route: `GET ${CHAT_CONVERSATIONS_PATH}/:id/messages`,
+    expected: signedIn(),
+    build: async (fx) => ({
+      path: conversationMessagesPath(await fx.conversation()),
+    }),
+  },
+  {
+    route: `POST ${CHAT_CONVERSATIONS_PATH}/:id/messages`,
+    expected: signedIn(201),
+    build: async (fx) => ({
+      path: conversationMessagesPath(await fx.conversation()),
+      body: { message: { content: 'Xin chào shop' } },
+    }),
+  },
+  {
+    route: `POST ${CHAT_CONVERSATIONS_PATH}/:id/read`,
+    expected: signedIn(),
+    build: async (fx) => ({
+      path: conversationReadPath(await fx.conversation()),
+    }),
+  },
 ];
 
 const ADMIN_ROUTES: RouteCase[] = [
@@ -545,6 +625,34 @@ const ADMIN_ROUTES: RouteCase[] = [
     build: async (fx) => ({
       path: `${ADMIN_ORDERS_PATH}/${await fx.pendingOrder('user')}/status`,
       body: { order: { status: OrderStatus.Confirmed } },
+    }),
+  },
+  {
+    route: `GET ${ADMIN_STATS_PATHS.overview}`,
+    expected: adminOnly(),
+    build: at(ADMIN_STATS_PATHS.overview),
+  },
+  {
+    route: `GET ${ADMIN_STATS_PATHS.bestSellers}`,
+    expected: adminOnly(),
+    build: at(ADMIN_STATS_PATHS.bestSellers),
+  },
+  {
+    route: `GET ${ADMIN_STATS_PATHS.revenue}`,
+    expected: adminOnly(),
+    build: at(`${ADMIN_STATS_PATHS.revenue}?groupBy=month`),
+  },
+  {
+    route: `GET ${ADMIN_SUGGESTIONS_PATH}`,
+    expected: adminOnly(),
+    build: at(ADMIN_SUGGESTIONS_PATH),
+  },
+  {
+    route: `PATCH ${ADMIN_SUGGESTIONS_PATH}/:id`,
+    expected: adminOnly(),
+    build: async (fx) => ({
+      path: `${ADMIN_SUGGESTIONS_PATH}/${await fx.suggestion()}`,
+      body: { suggestion: { status: SuggestionStatus.Approved } },
     }),
   },
 ];

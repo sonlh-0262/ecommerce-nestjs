@@ -49,6 +49,8 @@ export const ORDERS_DELIVERED_CONDITION = "status = 'DELIVERED'";
 export const ORDER_CODE_TIME_ZONE = 'Asia/Ho_Chi_Minh';
 export const ORDER_CODE_MAX_SEQ = 10 ** ORDER_CODE_SEQ_PADDING - 1;
 
+export const ORDER_AUTO_CANCEL_BATCH_SIZE = 100;
+
 export const ORDER_PAYABLE_STATUSES: readonly OrderStatus[] = [
   OrderStatus.Pending,
   OrderStatus.Confirmed,

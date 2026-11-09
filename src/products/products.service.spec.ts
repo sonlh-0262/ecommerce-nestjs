@@ -20,6 +20,7 @@ import { ProductsService } from './products.service';
 
 describe('ProductsService', () => {
   const PRODUCT_ID = '00000000-0000-4000-8000-000000000010';
+  const SHOP_ID = '00000000-0000-4000-8000-000000000020';
   const CATEGORY_ID = '00000000-0000-4000-8000-000000000020';
 
   const stored = (overrides: Partial<Product> = {}): Product =>
@@ -110,8 +111,15 @@ describe('ProductsService', () => {
         salePrice: null,
         description: null,
         isFeatured: false,
+        shopId: null,
       });
       expectCatalogCacheCleared();
+    });
+
+    it('gives a product created by a shop owner to that shop', async () => {
+      await expect(service.create(input(), SHOP_ID)).resolves.toMatchObject({
+        shopId: SHOP_ID,
+      });
     });
 
     it('holds the category for the insert so it cannot be deleted under it', async () => {
@@ -177,6 +185,19 @@ describe('ProductsService', () => {
       );
       expect(updated.slug).toBe('ao-thun');
       expectCatalogCacheCleared();
+    });
+
+    it('only finds a product of the given shop', async () => {
+      managerMock.findOne.mockResolvedValue(null);
+
+      await expect(
+        service.update(PRODUCT_ID, { stock: 1 }, SHOP_ID),
+      ).rejects.toThrow(new NotFoundException('products.NOT_FOUND'));
+      expect(managerMock.findOne).toHaveBeenCalledWith(Product, {
+        where: { id: PRODUCT_ID, shopId: SHOP_ID },
+        lock: { mode: 'pessimistic_write' },
+      });
+      expect(managerMock.update).not.toHaveBeenCalled();
     });
 
     it('checks a lowered price against the stored sale price', async () => {
@@ -245,6 +266,19 @@ describe('ProductsService', () => {
         productId: PRODUCT_ID,
       });
       expectCatalogCacheCleared();
+    });
+
+    it('lets a shop owner remove only a product of its shop', async () => {
+      managerMock.findOne.mockResolvedValue(null);
+
+      await expect(service.remove(PRODUCT_ID, SHOP_ID)).rejects.toThrow(
+        NotFoundException,
+      );
+      expect(managerMock.findOne).toHaveBeenCalledWith(
+        Product,
+        expect.objectContaining({ where: { id: PRODUCT_ID, shopId: SHOP_ID } }),
+      );
+      expect(managerMock.delete).not.toHaveBeenCalled();
     });
 
     it('answers 404 for a product that is already gone', async () => {

@@ -1,6 +1,9 @@
 import request from 'supertest';
 
-import { OrderDto, OrderResponseDto } from '../../src/orders/dto/order.dto';
+import {
+  OrderDto,
+  PlacedOrdersResponseDto,
+} from '../../src/orders/dto/order.dto';
 import { OrderStatus } from '../../src/orders/enums/order-status.enum';
 import { PaymentMethod } from '../../src/orders/enums/payment-method.enum';
 import { Product } from '../../src/products/entities/product.entity';
@@ -36,12 +39,12 @@ export function actingAs(ctx: TestContext, { session }: SeededUser) {
   };
 }
 
-export async function placeOrder(
+export async function placeOrders(
   ctx: TestContext,
   buyer: SeededUser,
   lines: [Product, number][],
   paymentMethod: PaymentMethod = PaymentMethod.Cod,
-): Promise<OrderDto> {
+): Promise<OrderDto[]> {
   const as = actingAs(ctx, buyer);
 
   for (const [product, quantity] of lines) {
@@ -58,7 +61,18 @@ export async function placeOrder(
     })
     .expect(201);
 
-  return (response.body as OrderResponseDto).order;
+  return (response.body as PlacedOrdersResponseDto).orders;
+}
+
+export async function placeOrder(
+  ctx: TestContext,
+  buyer: SeededUser,
+  lines: [Product, number][],
+  paymentMethod: PaymentMethod = PaymentMethod.Cod,
+): Promise<OrderDto> {
+  const [order] = await placeOrders(ctx, buyer, lines, paymentMethod);
+
+  return order;
 }
 
 export function changeStatus(

@@ -7,6 +7,7 @@ import { MAIL_JOB } from '../src/mail/mail.constants';
 import {
   ItemsUnavailableErrorDto,
   OrderResponseDto,
+  PlacedOrdersResponseDto,
   OrdersResponseDto,
 } from '../src/orders/dto/order.dto';
 import { OrderStatus } from '../src/orders/enums/order-status.enum';
@@ -94,6 +95,13 @@ describe('Cart and checkout (e2e)', () => {
     ).stock;
 
   const orderOf = (body: unknown) => (body as OrderResponseDto).order;
+  const placedOf = (body: unknown) => {
+    const { orders, ordersCount } = body as PlacedOrdersResponseDto;
+
+    expect(ordersCount).toBe(1);
+
+    return orders[0];
+  };
   const cartOf = (body: unknown) => (body as CartResponseDto).cart;
 
   const orderedWith = async (
@@ -103,7 +111,7 @@ describe('Cart and checkout (e2e)', () => {
   ) => {
     await addToCart(buyer, product.id, quantity).expect(201);
 
-    return orderOf((await placeOrder(buyer, paymentMethod).expect(201)).body);
+    return placedOf((await placeOrder(buyer, paymentMethod).expect(201)).body);
   };
 
   describe('cart', () => {
@@ -380,7 +388,7 @@ describe('Cart and checkout (e2e)', () => {
         placeOrder(buyer).expect(201),
         placeOrder(rival).expect(201),
       ]);
-      const codes = responses.map(({ body }) => orderOf(body).code);
+      const codes = responses.map(({ body }) => placedOf(body).code);
 
       expect(new Set(codes).size).toBe(2);
       expect(await stockOf(product)).toBe(8);

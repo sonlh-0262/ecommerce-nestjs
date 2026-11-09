@@ -6,11 +6,13 @@ import { I18nService } from 'nestjs-i18n';
 
 import { MailConfig } from '../config/mail.config';
 import { OrderStatus } from '../orders/enums/order-status.enum';
+import { ShopStatus } from '../shops/enums/shop-status.enum';
 import {
   ActionMailJob,
   MonthlyRevenueReportMailJob,
   OrderCreatedMailJob,
   OrderStatusChangedMailJob,
+  ShopReviewedMailJob,
 } from './interfaces/mail-job.interface';
 import {
   MAIL_ACTION_TEMPLATE,
@@ -88,6 +90,7 @@ describe('MailProcessor', () => {
   it.each([
     [MAIL_JOB.VerifyEmail, 'mail.VERIFY_EMAIL'],
     [MAIL_JOB.ResetPassword, 'mail.RESET_PASSWORD'],
+    [MAIL_JOB.AdminInvitation, 'mail.ADMIN_INVITATION'],
   ])('renders %s with its own copy', async (name: MailJobName, copy) => {
     await processor.process(jobOf(name));
 
@@ -264,6 +267,53 @@ describe('MailProcessor', () => {
       expect(sent().context).toMatchObject({
         reasonLabel: 'vi:mail.ORDER_STATUS_CHANGED.REASON',
         reason: 'Outside our delivery area',
+      });
+    });
+  });
+
+  describe(MAIL_JOB.ShopReviewed, () => {
+    const reviewJob = (data: Partial<ShopReviewedMailJob>) =>
+      ({
+        id: '46',
+        name: MAIL_JOB.ShopReviewed,
+        data: {
+          to: 'son@example.com',
+          lang: 'vi',
+          fullName: 'Lanh Hung Son',
+          shopName: 'Nhà Sách Hà Nội',
+          status: ShopStatus.Active,
+          reason: null,
+          ...data,
+        },
+        attemptsMade: 0,
+      }) as unknown as MailJob;
+
+    it.each([ShopStatus.Active, ShopStatus.Rejected] as const)(
+      'words a %s shop with its own copy',
+      async (status) => {
+        await processor.process(reviewJob({ status }));
+
+        expect(sent()).toMatchObject({
+          subject: `vi:mail.SHOP_REVIEWED.${status}.SUBJECT{"name":"Nhà Sách Hà Nội"}`,
+          template: MAIL_ORDER_STATUS_CHANGED_TEMPLATE,
+        });
+        expect(sent().context).toMatchObject({
+          intro: `vi:mail.SHOP_REVIEWED.${status}.INTRO{"name":"Nhà Sách Hà Nội"}`,
+        });
+      },
+    );
+
+    it('carries the reason of a rejection with its label', async () => {
+      await processor.process(
+        reviewJob({
+          status: ShopStatus.Rejected,
+          reason: 'Thiếu giấy phép kinh doanh',
+        }),
+      );
+
+      expect(sent().context).toMatchObject({
+        reasonLabel: 'vi:mail.SHOP_REVIEWED.REASON',
+        reason: 'Thiếu giấy phép kinh doanh',
       });
     });
   });

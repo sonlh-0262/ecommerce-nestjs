@@ -4,6 +4,7 @@ import { DataSource } from 'typeorm';
 
 import { CatalogFactory } from '../factories/catalog.factory';
 import { OrderFactory } from '../factories/order.factory';
+import { ShopFactory } from '../factories/shop.factory';
 import { UserFactory } from '../factories/user.factory';
 import { MailRecorder } from '../mail-recorder';
 
@@ -15,6 +16,7 @@ export interface TestContext {
   users: UserFactory;
   catalog: CatalogFactory;
   orders: OrderFactory;
+  shops: ShopFactory;
   mail: MailRecorder;
   storedFiles: () => Promise<string[]>;
   /** HTTP server to hand to `supertest`. */

@@ -7,6 +7,7 @@ import { MAIL_JOB } from '../src/mail/mail.constants';
 import {
   OrderDto,
   OrderResponseDto,
+  PlacedOrdersResponseDto,
   OrdersResponseDto,
 } from '../src/orders/dto/order.dto';
 import { OrderStatus } from '../src/orders/enums/order-status.enum';
@@ -71,8 +72,8 @@ describe('Purchase journey (e2e)', () => {
   const checkout = async () =>
     (
       (await asBuyer().post(ORDERS_PATH).send({ order: RECEIVER }).expect(201))
-        .body as OrderResponseDto
-    ).order;
+        .body as PlacedOrdersResponseDto
+    ).orders[0];
 
   const publishProduct = async (
     categoryId: string,

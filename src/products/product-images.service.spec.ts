@@ -18,6 +18,7 @@ import { ProductsService } from './products.service';
 
 describe('ProductImagesService', () => {
   const PRODUCT_ID = 'product-id';
+  const SHOP_ID = 'shop-id';
   const upload = (name: string) => ({
     originalname: name,
     buffer: Buffer.from(name),
@@ -114,6 +115,18 @@ describe('ProductImagesService', () => {
       expect(productsMock.invalidateCache).toHaveBeenCalled();
     });
 
+    it('locks the product within the shop of its owner', async () => {
+      existing();
+
+      await service.add(PRODUCT_ID, [upload('a.png')], false, SHOP_ID);
+
+      expect(productsMock.lock).toHaveBeenCalledWith(
+        managerMock,
+        PRODUCT_ID,
+        SHOP_ID,
+      );
+    });
+
     it('appends after the highest position', async () => {
       existing(image('i1', 0, true), image('i2', 3));
 
@@ -176,6 +189,18 @@ describe('ProductImagesService', () => {
       );
       expect(managerMock.update).not.toHaveBeenCalled();
       expect(productsMock.invalidateCache).toHaveBeenCalled();
+    });
+
+    it('locks the product within the shop of its owner', async () => {
+      existing(image('i1', 0, true), image('i2', 1));
+
+      await service.remove(PRODUCT_ID, 'i2', SHOP_ID);
+
+      expect(productsMock.lock).toHaveBeenCalledWith(
+        managerMock,
+        PRODUCT_ID,
+        SHOP_ID,
+      );
     });
 
     it('promotes the next image by position when the thumbnail goes', async () => {

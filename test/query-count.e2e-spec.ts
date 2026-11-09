@@ -10,6 +10,7 @@ import { CACHE_RESOURCES } from '../src/common/constants/cache-keys';
 import { OrderStatus } from '../src/orders/enums/order-status.enum';
 import { ProductSuggestion } from '../src/product-suggestions/entities/product-suggestion.entity';
 import { Product } from '../src/products/entities/product.entity';
+import { ProductStatus } from '../src/products/enums/product-status.enum';
 import { REDIS_CLIENT } from '../src/redis/redis.constants';
 import { UserRole } from '../src/users/enums/user-role.enum';
 import { bearer } from './support/http';
@@ -20,6 +21,7 @@ import { createTestApp } from './support/test-app';
 import {
   ADMIN_CATEGORIES_PATH,
   ADMIN_ORDERS_PATH,
+  ADMIN_SHOPS_PATH,
   ADMIN_STATS_PATHS,
   ADMIN_SUGGESTIONS_PATH,
   ADMIN_USERS_PATH,
@@ -27,11 +29,13 @@ import {
   CHAT_CONVERSATIONS_PATH,
   ORDERS_PATH,
   PRODUCTS_PATH,
+  SELLER_ORDERS_PATH,
+  SELLER_PRODUCTS_PATH,
   TEST_SUGGESTION,
   productReviewsPath,
 } from './support/test.constants';
 
-type Caller = 'guest' | 'buyer' | 'admin';
+type Caller = 'guest' | 'buyer' | 'admin' | 'seller';
 
 interface ListEndpoint {
   name: string;
@@ -49,6 +53,7 @@ describe('Query counts and cache (e2e)', () => {
   let ctx: TestContext;
   let admin: SeededUser;
   let buyer: SeededUser;
+  let seller: SeededUser;
   let category: Category;
   let reviewed: Product;
 
@@ -56,6 +61,10 @@ describe('Query counts and cache (e2e)', () => {
     ctx = await createTestApp();
     admin = await ctx.users.createAuthenticated({ role: UserRole.Admin });
     buyer = await ctx.users.createAuthenticated();
+    seller = await ctx.users.createAuthenticated();
+
+    const shop = await ctx.shops.shop(seller.user);
+    const shopCustomer = await ctx.users.create();
 
     const categories = await Promise.all(
       Array.from({ length: ROWS }, () => ctx.catalog.category()),
@@ -99,6 +108,18 @@ describe('Query counts and cache (e2e)', () => {
         content: 'Xin chào shop',
         createdAt: sentAt,
       });
+
+      const shopProduct = await ctx.catalog.product(category, {
+        shopId: shop.id,
+        status: ProductStatus.Draft,
+      });
+
+      await ctx.shops.shop(reviewer);
+      await ctx.orders.order(shopCustomer, shopProduct, {
+        shopId: shop.id,
+        status: OrderStatus.Delivered,
+        deliveredAt: new Date(),
+      });
     }
   });
 
@@ -111,6 +132,7 @@ describe('Query counts and cache (e2e)', () => {
     guest: null,
     buyer: buyer.session.token,
     admin: admin.session.token,
+    seller: seller.session.token,
   });
 
   const get = (path: string, caller: Caller = 'guest') => {
@@ -220,6 +242,27 @@ describe('Query counts and cache (e2e)', () => {
       caller: 'admin',
       listKey: 'conversations',
       queries: 6,
+    },
+    {
+      name: 'GET /admin/shops',
+      path: () => ADMIN_SHOPS_PATH,
+      caller: 'admin',
+      listKey: 'shops',
+      queries: 4,
+    },
+    {
+      name: 'GET /seller/products',
+      path: () => SELLER_PRODUCTS_PATH,
+      caller: 'seller',
+      listKey: 'products',
+      queries: 7,
+    },
+    {
+      name: 'GET /seller/orders',
+      path: () => SELLER_ORDERS_PATH,
+      caller: 'seller',
+      listKey: 'orders',
+      queries: 8,
     },
     {
       name: 'GET /admin/stats/best-sellers',

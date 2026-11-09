@@ -5,6 +5,8 @@ import { In, Repository } from 'typeorm';
 import { CacheService } from '../cache/cache.service';
 import { CACHE_RESOURCES } from '../common/constants/cache-keys';
 import { Category } from '../categories/entities/category.entity';
+import { buildShop } from '../shops/entities/shop.fixture';
+import { ShopsViewService } from '../shops/shops-view.service';
 import { AdminProductsQueryDto } from './dto/admin-products-query.dto';
 import {
   FeaturedProductsQueryDto,
@@ -44,6 +46,7 @@ describe('ProductsViewService', () => {
       averageRating: 0,
       reviewCount: 0,
       categoryId: categories[index % 2].id,
+      shopId: null,
       createdAt: CREATED_AT,
       updatedAt: CREATED_AT,
     }) as Product;
@@ -74,6 +77,9 @@ describe('ProductsViewService', () => {
   };
   const imagesRepository = { find: jest.fn() };
   const categoriesRepository = { findBy: jest.fn(), findOneOrFail: jest.fn() };
+  const shopsMock = { byIds: jest.fn() };
+  const shop = buildShop();
+  const SHOP_REF = { id: shop.id, name: shop.name, slug: shop.slug };
   const cacheMock = {
     getOrSet: jest.fn(
       (
@@ -96,12 +102,14 @@ describe('ProductsViewService', () => {
       new ProductThumbnailsService(
         imagesRepository as unknown as Repository<ProductImage>,
       ),
+      shopsMock as unknown as ShopsViewService,
       cacheMock as unknown as CacheService,
       i18nMock as unknown as I18nService,
     );
 
     categoriesRepository.findBy.mockResolvedValue(categories);
     imagesRepository.find.mockResolvedValue([]);
+    shopsMock.byIds.mockResolvedValue(new Map());
   });
 
   afterEach(() => {
@@ -167,6 +175,34 @@ describe('ProductsViewService', () => {
       expect(response.products[0].thumbnailUrl).toBeNull();
     });
 
+    it('names no shop for a product of the platform', async () => {
+      const response = await service.list(new ProductsQueryDto());
+
+      expect(response.products[0].shop).toBeNull();
+    });
+
+    it('loads the shops of a page in one batch', async () => {
+      builder.getManyAndCount.mockResolvedValue([
+        [
+          { ...product(1), shopId: shop.id },
+          { ...product(2), shopId: shop.id },
+          product(3),
+        ],
+        3,
+      ]);
+      shopsMock.byIds.mockResolvedValue(new Map([[shop.id, shop]]));
+
+      const response = await service.list(new ProductsQueryDto());
+
+      expect(shopsMock.byIds).toHaveBeenCalledTimes(1);
+      expect(shopsMock.byIds).toHaveBeenCalledWith([shop.id, shop.id, null]);
+      expect(response.products.map((item) => item.shop)).toEqual([
+        SHOP_REF,
+        SHOP_REF,
+        null,
+      ]);
+    });
+
     it('skips the batch queries for an empty page', async () => {
       builder.getManyAndCount.mockResolvedValue([[], 0]);
 
@@ -205,6 +241,27 @@ describe('ProductsViewService', () => {
         {
           status: ProductStatus.Archived,
         },
+      );
+    });
+  });
+
+  describe('shopList', () => {
+    it('lists only the products of one shop, with the admin filters', async () => {
+      builder.getManyAndCount.mockResolvedValue([[], 0]);
+
+      await service.shopList(
+        shop.id,
+        Object.assign(new AdminProductsQueryDto(), {
+          status: ProductStatus.Draft,
+        }),
+      );
+
+      expect(builder.where).toHaveBeenCalledWith('product.shopId = :shopId', {
+        shopId: shop.id,
+      });
+      expect(builder.andWhere).toHaveBeenCalledWith(
+        'product.status = :status',
+        { status: ProductStatus.Draft },
       );
     });
   });
@@ -271,7 +328,23 @@ describe('ProductsViewService', () => {
           parent: { id: 'root', slug: 'thoi-trang-nam' },
         },
         updatedAt: CREATED_AT.toISOString(),
+        shop: null,
       });
+    });
+
+    it('names the shop that sells it', async () => {
+      productsRepository.findOneBy.mockResolvedValue({
+        ...product(1),
+        shopId: shop.id,
+      });
+      categoriesRepository.findOneOrFail.mockResolvedValue(categories[1]);
+      shopsMock.byIds.mockResolvedValue(new Map([[shop.id, shop]]));
+
+      const { product: detail } =
+        await service.findPublishedBySlug('san-pham-1');
+
+      expect(shopsMock.byIds).toHaveBeenCalledWith([shop.id]);
+      expect(detail.shop).toEqual(SHOP_REF);
     });
   });
 });

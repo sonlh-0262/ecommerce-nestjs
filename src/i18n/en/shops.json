@@ -1,0 +1,7 @@
+{
+  "NOT_FOUND": "Shop not found",
+  "ALREADY_OWNS_SHOP": "You already have a shop",
+  "ALREADY_REVIEWED": "This shop has already been reviewed",
+  "REASON_REQUIRED": "A reason of at least {min} characters is required to reject a shop",
+  "SHOP_REQUIRED": "You need an approved shop to do this"
+}

@@ -1,6 +1,6 @@
 import { BullModule } from '@nestjs/bullmq';
 import { Module } from '@nestjs/common';
-import { ConfigModule, ConfigService } from '@nestjs/config';
+import { ConditionalModule, ConfigModule, ConfigService } from '@nestjs/config';
 import { APP_GUARD } from '@nestjs/core';
 import { ScheduleModule } from '@nestjs/schedule';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
@@ -28,6 +28,7 @@ import {
 import { RolesGuard } from './common/guards/roles.guard';
 import { AcceptLanguageAliasResolver } from './common/resolvers/accept-language-alias.resolver';
 import authConfig from './config/auth.config';
+import bullBoardConfig from './config/bull-board.config';
 import { buildBullOptions } from './config/bull-options';
 import configuration, {
   APP_CONFIG_KEY,
@@ -55,9 +56,12 @@ import { MailModule } from './mail/mail.module';
 import { OrdersModule } from './orders/orders.module';
 import { ProductSuggestionsModule } from './product-suggestions/product-suggestions.module';
 import { ProductsModule } from './products/products.module';
+import { QUEUE_BOARD_ENABLED_ENV } from './queue-board/queue-board.constants';
+import { QueueBoardModule } from './queue-board/queue-board.module';
 import { REDIS_CLIENT } from './redis/redis.constants';
 import { RedisModule } from './redis/redis.module';
 import { ReviewsModule } from './reviews/reviews.module';
+import { ShopsModule } from './shops/shops.module';
 import { StatsModule } from './stats/stats.module';
 import { UsersModule } from './users/users.module';
 
@@ -76,6 +80,7 @@ import { UsersModule } from './users/users.module';
         storageConfig,
         seedConfig,
         ordersConfig,
+        bullBoardConfig,
       ],
       validationSchema: envValidationSchema,
       validationOptions: { abortEarly: false },
@@ -125,6 +130,10 @@ import { UsersModule } from './users/users.module';
           configService.getOrThrow<RedisConfig>(REDIS_CONFIG_KEY),
         ),
     }),
+    ConditionalModule.registerWhen(
+      QueueBoardModule,
+      (env) => env[QUEUE_BOARD_ENABLED_ENV] === 'true',
+    ),
     ScheduleModule.forRoot(),
     DatabaseModule,
     RedisModule,
@@ -133,6 +142,7 @@ import { UsersModule } from './users/users.module';
     UsersModule,
     AuthModule,
     CategoriesModule,
+    ShopsModule,
     ProductsModule,
     CartModule,
     OrdersModule,

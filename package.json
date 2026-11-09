@@ -24,6 +24,7 @@
     "test:cov": "jest --coverage",
     "test:debug": "node --inspect-brk node_modules/.bin/jest --runInBand",
     "test:e2e": "jest --config ./test/jest-e2e.json --runInBand",
+    "test:system": "node system-test/run.mjs",
     "console": "ts-node -r tsconfig-paths/register src/console/main.ts",
     "console:prod": "node dist/console/main",
     "seed": "npm run console -- seed:admin",
@@ -37,6 +38,9 @@
     "migration:reset": "npm run schema:drop && npm run migration:run"
   },
   "dependencies": {
+    "@bull-board/api": "^9.11.0",
+    "@bull-board/express": "^9.11.0",
+    "@bull-board/nestjs": "^9.11.0",
     "@nest-lab/throttler-storage-redis": "^1.2.0",
     "@nestjs-modules/mailer": "^2.3.10",
     "@nestjs/bullmq": "^11.0.5",
@@ -59,6 +63,7 @@
     "class-validator": "^0.15.1",
     "cron": "4.4.0",
     "dotenv": "^17.4.1",
+    "express-basic-auth": "^1.2.1",
     "handlebars": "^4.7.10",
     "ioredis": "^5.9.1",
     "joi": "^18.2.9",

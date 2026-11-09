@@ -46,6 +46,7 @@ export const AUTH_PATHS = {
   logout: `${API_BASE_PATH}/auth/logout`,
   forgotPassword: `${API_BASE_PATH}/auth/forgot-password`,
   resetPassword: `${API_BASE_PATH}/auth/reset-password`,
+  acceptInvitation: `${API_BASE_PATH}/auth/accept-invitation`,
 } as const;
 
 export const ATTACHMENTS_PATH = `${API_BASE_PATH}/attachments`;
@@ -57,6 +58,8 @@ export const PROFILE_PATHS = {
 } as const;
 
 export const ADMIN_USERS_PATH = `${API_BASE_PATH}/admin/users`;
+
+export const ADMIN_ADMINS_PATH = `${API_BASE_PATH}/admin/admins`;
 
 export const CATEGORIES_PATH = `${API_BASE_PATH}/categories`;
 
@@ -88,6 +91,22 @@ export const ADMIN_STATS_PATHS = {
   bestSellers: `${API_BASE_PATH}/admin/stats/best-sellers`,
   revenue: `${API_BASE_PATH}/admin/stats/revenue`,
 } as const;
+
+export const SHOPS_PATH = `${API_BASE_PATH}/shops`;
+
+export const MY_SHOP_PATH = `${SHOPS_PATH}/me`;
+
+export const ADMIN_SHOPS_PATH = `${API_BASE_PATH}/admin/shops`;
+
+export const TEST_SHOP = {
+  name: 'Nhà Sách Hà Nội',
+  phone: '0901234567',
+  address: '12 Hang Bai, Ha Noi',
+};
+
+export const SELLER_PRODUCTS_PATH = `${API_BASE_PATH}/seller/products`;
+
+export const SELLER_ORDERS_PATH = `${API_BASE_PATH}/seller/orders`;
 
 export const SUGGESTIONS_PATH = `${API_BASE_PATH}/product-suggestions`;
 

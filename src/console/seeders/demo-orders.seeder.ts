@@ -131,7 +131,7 @@ export class DemoOrdersSeeder {
       });
     }
 
-    const { order } = await this.ordersService.checkout(buyer, {
+    const [{ order }] = await this.ordersService.checkout(buyer, {
       receiverName: buyer.fullName ?? buyer.username,
       receiverPhone: DEMO_RECEIVER_PHONE,
       shippingAddress: DEMO_SHIPPING_ADDRESS,

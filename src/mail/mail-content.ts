@@ -14,6 +14,7 @@ import {
   OrderAutoCancelledMailJob,
   OrderCreatedMailJob,
   OrderStatusChangedMailJob,
+  ShopReviewedMailJob,
 } from './interfaces/mail-job.interface';
 import {
   MAIL_ACTION_TEMPLATE,
@@ -38,10 +39,12 @@ type MailComposer<T extends MailJobName> = (
 const MAIL_COMPOSERS: { [K in MailJobName]: MailComposer<K> } = {
   [MAIL_JOB.VerifyEmail]: composeActionMail,
   [MAIL_JOB.ResetPassword]: composeActionMail,
+  [MAIL_JOB.AdminInvitation]: composeActionMail,
   [MAIL_JOB.OrderCreated]: composeOrderCreatedMail,
   [MAIL_JOB.OrderStatusChanged]: composeOrderStatusChangedMail,
   [MAIL_JOB.OrderAutoCancelled]: composeOrderAutoCancelledMail,
   [MAIL_JOB.MonthlyRevenueReport]: composeMonthlyRevenueReportMail,
+  [MAIL_JOB.ShopReviewed]: composeShopReviewedMail,
 };
 
 export function composeMail<T extends MailJobName>(
@@ -180,24 +183,41 @@ function composeOrderCreatedMail(
   };
 }
 
-function composeOrderStatusChangedMail(
+function composeStatusMail(
   copy: string,
-  job: OrderStatusChangedMailJob,
+  job: GreetedMailJob & { status: string; reason: string | null },
+  args: Record<string, string>,
   t: MailTranslator,
 ): MailContent {
   const statusCopy = `${copy}.${job.status}`;
-  const subject = t(`${statusCopy}.SUBJECT`, { code: job.orderCode });
+  const subject = t(`${statusCopy}.SUBJECT`, args);
 
   return {
     subject,
     template: MAIL_ORDER_STATUS_CHANGED_TEMPLATE,
     context: {
       ...frameOf(subject, job, t),
-      intro: t(`${statusCopy}.INTRO`, { code: job.orderCode }),
+      intro: t(`${statusCopy}.INTRO`, args),
       reasonLabel: t(`${copy}.REASON`),
       reason: job.reason,
     },
   };
+}
+
+function composeOrderStatusChangedMail(
+  copy: string,
+  job: OrderStatusChangedMailJob,
+  t: MailTranslator,
+): MailContent {
+  return composeStatusMail(copy, job, { code: job.orderCode }, t);
+}
+
+function composeShopReviewedMail(
+  copy: string,
+  job: ShopReviewedMailJob,
+  t: MailTranslator,
+): MailContent {
+  return composeStatusMail(copy, job, { name: job.shopName }, t);
 }
 
 function composeOrderAutoCancelledMail(

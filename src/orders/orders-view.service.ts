@@ -11,7 +11,10 @@ import {
 
 import { prefixPattern } from '../common/helpers/escape-like';
 import { ProductThumbnailsService } from '../products/product-thumbnails.service';
+import { ShopsViewService, shopIn } from '../shops/shops-view.service';
+import { UserRef } from '../users/dto/user-ref.dto';
 import { User } from '../users/entities/user.entity';
+import { loadUserRefs } from '../users/user-refs';
 import { AdminOrdersQueryDto } from './dto/admin-orders-query.dto';
 import { OrdersQueryDto } from './dto/orders-query.dto';
 import { OrderItem } from './entities/order-item.entity';
@@ -20,7 +23,6 @@ import { Order } from './entities/order.entity';
 import {
   AdminOrderDetail,
   AdminOrderPage,
-  OrderUser,
 } from './interfaces/admin-order.interface';
 import { OrderDetail } from './interfaces/order-detail.interface';
 import { OrderPage } from './interfaces/order-summary.interface';
@@ -42,6 +44,7 @@ export class OrdersViewService {
     @InjectRepository(User)
     private readonly usersRepository: Repository<User>,
     private readonly thumbnails: ProductThumbnailsService,
+    private readonly shops: ShopsViewService,
     private readonly i18n: I18nService,
   ) {}
 
@@ -54,9 +57,82 @@ export class OrdersViewService {
     );
   }
 
-  async adminList(query: AdminOrdersQueryDto): Promise<AdminOrderPage> {
-    const builder = this.ordersRepository.createQueryBuilder('order');
+  adminList(query: AdminOrdersQueryDto): Promise<AdminOrderPage> {
+    return this.managedPage(
+      this.ordersRepository.createQueryBuilder('order'),
+      query,
+    );
+  }
 
+  shopList(
+    shopId: string,
+    query: AdminOrdersQueryDto,
+  ): Promise<AdminOrderPage> {
+    return this.managedPage(
+      this.ordersRepository
+        .createQueryBuilder('order')
+        .where('order.shopId = :shopId', { shopId }),
+      query,
+    );
+  }
+
+  async findOwned(userId: string, code: string): Promise<OrderDetail> {
+    return this.detailOf(await this.findOrFail({ code, userId }));
+  }
+
+  async adminFind(code: string): Promise<AdminOrderDetail> {
+    return this.adminDetailOf(await this.findOrFail({ code }));
+  }
+
+  async shopFind(shopId: string, code: string): Promise<AdminOrderDetail> {
+    return this.adminDetailOf(await this.findOrFail({ code, shopId }));
+  }
+
+  async detailOf(order: Order): Promise<OrderDetail> {
+    const [items, history, shops] = await Promise.all([
+      this.itemsRepository.find({
+        where: { orderId: order.id },
+        order: ITEMS_ORDER,
+      }),
+      this.historyRepository.find({
+        where: { orderId: order.id },
+        order: { createdAt: 'ASC', id: 'ASC' },
+      }),
+      this.shops.byIds([order.shopId]),
+    ]);
+    const thumbnailUrls = await this.thumbnails.urlsOf(
+      items.map(({ productId }) => productId),
+    );
+
+    return {
+      order,
+      shop: shopIn(shops, order.shopId),
+      items,
+      history,
+      thumbnailUrls,
+    };
+  }
+
+  async adminDetailOf(order: Order): Promise<AdminOrderDetail> {
+    const detail = await this.detailOf(order);
+    const actors = await this.usersById([
+      order.userId,
+      ...detail.history.flatMap(({ changedBy }) =>
+        changedBy ? [changedBy] : [],
+      ),
+    ]);
+
+    return {
+      ...detail,
+      customer: actors.get(order.userId) as UserRef,
+      actors,
+    };
+  }
+
+  private async managedPage(
+    builder: SelectQueryBuilder<Order>,
+    query: AdminOrdersQueryDto,
+  ): Promise<AdminOrderPage> {
     if (query.code) {
       builder.andWhere('order.code ILIKE :code', {
         code: prefixPattern(query.code),
@@ -75,51 +151,9 @@ export class OrdersViewService {
     return {
       summaries: summaries.map((summary) => ({
         ...summary,
-        customer: users.get(summary.order.userId) as OrderUser,
+        customer: users.get(summary.order.userId) as UserRef,
       })),
       total,
-    };
-  }
-
-  async findOwned(userId: string, code: string): Promise<OrderDetail> {
-    return this.detailOf(await this.findOrFail({ code, userId }));
-  }
-
-  async adminFind(code: string): Promise<AdminOrderDetail> {
-    return this.adminDetailOf(await this.findOrFail({ code }));
-  }
-
-  async detailOf(order: Order): Promise<OrderDetail> {
-    const [items, history] = await Promise.all([
-      this.itemsRepository.find({
-        where: { orderId: order.id },
-        order: ITEMS_ORDER,
-      }),
-      this.historyRepository.find({
-        where: { orderId: order.id },
-        order: { createdAt: 'ASC', id: 'ASC' },
-      }),
-    ]);
-    const thumbnailUrls = await this.thumbnails.urlsOf(
-      items.map(({ productId }) => productId),
-    );
-
-    return { order, items, history, thumbnailUrls };
-  }
-
-  async adminDetailOf(order: Order): Promise<AdminOrderDetail> {
-    const detail = await this.detailOf(order);
-    const actors = await this.usersById([
-      order.userId,
-      ...detail.history.flatMap(({ changedBy }) =>
-        changedBy ? [changedBy] : [],
-      ),
-    ]);
-
-    return {
-      ...detail,
-      customer: actors.get(order.userId) as OrderUser,
-      actors,
     };
   }
 
@@ -158,11 +192,19 @@ export class OrdersViewService {
       .limit(query.limit)
       .getManyAndCount();
 
-    const itemsByOrder = await this.itemsByOrder(orders);
+    const [itemsByOrder, shops] = await Promise.all([
+      this.itemsByOrder(orders),
+      this.shops.byIds(orders.map(({ shopId }) => shopId)),
+    ]);
     const summaries = orders.map((order) => {
       const items = itemsByOrder.get(order.id) ?? [];
 
-      return { order, itemsCount: items.length, firstItem: items[0] ?? null };
+      return {
+        order,
+        shop: shopIn(shops, order.shopId),
+        itemsCount: items.length,
+        firstItem: items[0] ?? null,
+      };
     });
     const thumbnailUrls = await this.thumbnails.urlsOf(
       summaries.flatMap(({ firstItem }) =>
@@ -181,18 +223,8 @@ export class OrdersViewService {
     };
   }
 
-  private async usersById(ids: string[]): Promise<Map<string, OrderUser>> {
-    if (ids.length === 0) {
-      return new Map();
-    }
-
-    const users = await this.usersRepository.find({
-      where: { id: In([...new Set(ids)]) },
-      select: { id: true, email: true, username: true, fullName: true },
-      withDeleted: true,
-    });
-
-    return new Map(users.map((user) => [user.id, user]));
+  private usersById(ids: string[]): Promise<Map<string, UserRef>> {
+    return loadUserRefs(this.usersRepository, ids);
   }
 
   private async itemsByOrder(

@@ -17,6 +17,7 @@ import { Category } from '../../categories/entities/category.entity';
 import { numericTransformer } from '../../common/transformers/numeric.transformer';
 import { OrderItem } from '../../orders/entities/order-item.entity';
 import { Review } from '../../reviews/entities/review.entity';
+import { Shop } from '../../shops/entities/shop.entity';
 import { ProductStatus } from '../enums/product-status.enum';
 import {
   NAME_MAX_LENGTH,
@@ -31,12 +32,15 @@ import {
   PRODUCTS_REVIEW_COUNT_CHECK,
   PRODUCTS_SALE_PRICE_CHECK,
   PRODUCTS_SEARCH_VECTOR_EXPRESSION,
+  PRODUCTS_SHOP_FK,
+  PRODUCTS_SHOP_INDEX,
   PRODUCTS_SOLD_COUNT_CHECK,
   PRODUCTS_SOLD_COUNT_INDEX,
   PRODUCTS_STOCK_CHECK,
   PRODUCTS_ALIVE_CONDITION,
   PRODUCTS_FEATURED_CONDITION,
   PRODUCTS_FEATURED_INDEX,
+  PRODUCTS_WITH_SHOP_CONDITION,
   UNIQUE_PRODUCTS_SLUG_INDEX,
   RATING_PRECISION,
   RATING_SCALE,
@@ -57,6 +61,9 @@ import { ProductImage } from './product-image.entity';
 @Index(PRODUCTS_ADMIN_LIST_INDEX, ['status', 'createdAt', 'id'])
 @Index(PRODUCTS_FEATURED_INDEX, ['soldCount', 'id'], {
   where: PRODUCTS_FEATURED_CONDITION,
+})
+@Index(PRODUCTS_SHOP_INDEX, ['shopId', 'createdAt', 'id'], {
+  where: PRODUCTS_WITH_SHOP_CONDITION,
 })
 @Check(PRODUCTS_PRICE_CHECK, 'price >= 0')
 @Check(
@@ -83,6 +90,13 @@ export class Product {
     foreignKeyConstraintName: PRODUCTS_CATEGORY_FK,
   })
   category: Category;
+
+  @Column({ name: 'shop_id', type: 'uuid', nullable: true })
+  shopId: string | null;
+
+  @ManyToOne(() => Shop, { nullable: true, onDelete: 'RESTRICT' })
+  @JoinColumn({ name: 'shop_id', foreignKeyConstraintName: PRODUCTS_SHOP_FK })
+  shop?: Shop | null;
 
   @Column({ type: 'varchar', length: NAME_MAX_LENGTH })
   name: string;

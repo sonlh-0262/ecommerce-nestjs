@@ -3,6 +3,8 @@ import { I18nService } from 'nestjs-i18n';
 import { In, Repository } from 'typeorm';
 
 import { ProductThumbnailsService } from '../products/product-thumbnails.service';
+import { buildShop } from '../shops/entities/shop.fixture';
+import { ShopsViewService } from '../shops/shops-view.service';
 import { User } from '../users/entities/user.entity';
 import { AdminOrdersQueryDto } from './dto/admin-orders-query.dto';
 import { OrdersQueryDto } from './dto/orders-query.dto';
@@ -15,8 +17,10 @@ import { OrdersViewService } from './orders-view.service';
 describe('OrdersViewService', () => {
   const USER_ID = 'u1';
 
-  const order = (id: string, userId = USER_ID) =>
-    ({ id, code: `ORD-${id}`, userId }) as Order;
+  const SHOP = buildShop();
+
+  const order = (id: string, userId = USER_ID, shopId: string | null = null) =>
+    ({ id, code: `ORD-${id}`, userId, shopId }) as Order;
   const user = (id: string) =>
     ({ id, email: `${id}@example.com`, username: id, fullName: null }) as User;
   const item = (orderId: string, productId: string, productName: string) =>
@@ -43,6 +47,7 @@ describe('OrdersViewService', () => {
   const itemsRepository = { find: jest.fn() };
   const historyRepository = { find: jest.fn() };
   const usersRepository = { find: jest.fn() };
+  const shopsMock = { byIds: jest.fn() };
   const thumbnailsMock = { urlsOf: jest.fn() };
   const i18nMock = { t: jest.fn((key: string) => key) };
 
@@ -52,6 +57,7 @@ describe('OrdersViewService', () => {
     historyRepository as unknown as Repository<OrderStatusHistory>,
     usersRepository as unknown as Repository<User>,
     thumbnailsMock as unknown as ProductThumbnailsService,
+    shopsMock as unknown as ShopsViewService,
     i18nMock as unknown as I18nService,
   );
 
@@ -64,6 +70,7 @@ describe('OrdersViewService', () => {
     historyRepository.find.mockResolvedValue([]);
     usersRepository.find.mockResolvedValue([]);
     thumbnailsMock.urlsOf.mockResolvedValue(new Map());
+    shopsMock.byIds.mockResolvedValue(new Map());
   });
 
   afterEach(() => {
@@ -127,6 +134,28 @@ describe('OrdersViewService', () => {
       });
       expect(thumbnailsMock.urlsOf).toHaveBeenCalledTimes(1);
       expect(thumbnailsMock.urlsOf).toHaveBeenCalledWith(['p1', 'p3']);
+      expect(shopsMock.byIds).toHaveBeenCalledTimes(1);
+    });
+
+    it('loads the shops of a page in one query', async () => {
+      builder.getManyAndCount.mockResolvedValue([
+        [
+          order('o1', USER_ID, SHOP.id),
+          order('o2', USER_ID, SHOP.id),
+          order('o3'),
+        ],
+        3,
+      ]);
+      shopsMock.byIds.mockResolvedValue(new Map([[SHOP.id, SHOP]]));
+
+      const page = await service.list(USER_ID, query());
+
+      expect(shopsMock.byIds).toHaveBeenCalledWith([SHOP.id, SHOP.id, null]);
+      expect(page.summaries.map(({ shop }) => shop)).toEqual([
+        SHOP,
+        SHOP,
+        null,
+      ]);
     });
 
     it('summarises each order by its item count and first item', async () => {
@@ -147,12 +176,14 @@ describe('OrdersViewService', () => {
       expect(page.summaries).toEqual([
         {
           order: order('o1'),
+          shop: null,
           itemsCount: 2,
           firstItem: item('o1', 'p1', 'Áo thun'),
           thumbnailUrl: '/thumb-p1',
         },
         {
           order: order('o2'),
+          shop: null,
           itemsCount: 1,
           firstItem: item('o2', 'p3', 'Quần'),
           thumbnailUrl: null,
@@ -192,6 +223,7 @@ describe('OrdersViewService', () => {
 
       await expect(service.findOwned(USER_ID, 'ORD-o1')).resolves.toEqual({
         order: order('o1'),
+        shop: null,
         items,
         history,
         thumbnailUrls: new Map([['p1', '/thumb']]),
@@ -200,6 +232,18 @@ describe('OrdersViewService', () => {
         where: { orderId: 'o1' },
         order: { createdAt: 'ASC', id: 'ASC' },
       });
+    });
+
+    it('names the shop of an order placed with a shop', async () => {
+      ordersRepository.findOneBy.mockResolvedValue(
+        order('o1', USER_ID, SHOP.id),
+      );
+      shopsMock.byIds.mockResolvedValue(new Map([[SHOP.id, SHOP]]));
+
+      const detail = await service.findOwned(USER_ID, 'ORD-o1');
+
+      expect(shopsMock.byIds).toHaveBeenCalledWith([SHOP.id]);
+      expect(detail.shop).toBe(SHOP);
     });
   });
 
@@ -255,6 +299,36 @@ describe('OrdersViewService', () => {
         'u2',
         'u1',
       ]);
+    });
+  });
+
+  describe('shopList', () => {
+    it('lists only the orders of the shop, with the admin filters', async () => {
+      await service.shopList(
+        SHOP.id,
+        Object.assign(new AdminOrdersQueryDto(), { code: 'ORD' }),
+      );
+
+      expect(builder.where).toHaveBeenCalledWith('order.shopId = :shopId', {
+        shopId: SHOP.id,
+      });
+      expect(builder.andWhere).toHaveBeenCalledWith('order.code ILIKE :code', {
+        code: 'ORD%',
+      });
+    });
+  });
+
+  describe('shopFind', () => {
+    it('finds an order only within the shop', async () => {
+      ordersRepository.findOneBy.mockResolvedValue(null);
+
+      await expect(service.shopFind(SHOP.id, 'ORD-x')).rejects.toThrow(
+        new NotFoundException('orders.NOT_FOUND'),
+      );
+      expect(ordersRepository.findOneBy).toHaveBeenCalledWith({
+        code: 'ORD-x',
+        shopId: SHOP.id,
+      });
     });
   });
 

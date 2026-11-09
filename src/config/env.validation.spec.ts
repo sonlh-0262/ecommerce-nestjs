@@ -232,4 +232,27 @@ describe('envValidationSchema', () => {
       ).toContain('DB_SLOW_QUERY_MS');
     });
   });
+
+  describe('BULL_BOARD_*', () => {
+    it('needs no account while the board is off', () => {
+      expect(validate({ BULL_BOARD_ENABLED: 'false' }).error).toBeUndefined();
+    });
+
+    it('refuses to open the board without an account', () => {
+      const { error } = validate({ BULL_BOARD_ENABLED: 'true' });
+
+      expect(error?.message).toContain('BULL_BOARD_USERNAME');
+      expect(error?.message).toContain('BULL_BOARD_PASSWORD');
+    });
+
+    it('accepts an enabled board with an account', () => {
+      expect(
+        validate({
+          BULL_BOARD_ENABLED: 'true',
+          BULL_BOARD_USERNAME: 'admin',
+          BULL_BOARD_PASSWORD: 'secret',
+        }).error,
+      ).toBeUndefined();
+    });
+  });
 });

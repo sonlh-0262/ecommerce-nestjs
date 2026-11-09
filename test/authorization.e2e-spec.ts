@@ -14,6 +14,8 @@ import { ProductStatus } from '../src/products/enums/product-status.enum';
 import { SuggestionResponseDto } from '../src/product-suggestions/dto/suggestion.dto';
 import { SuggestionStatus } from '../src/product-suggestions/enums/suggestion-status.enum';
 import { ReviewResponseDto } from '../src/reviews/dto/review.dto';
+import { Shop } from '../src/shops/entities/shop.entity';
+import { ShopStatus } from '../src/shops/enums/shop-status.enum';
 import { UserRole } from '../src/users/enums/user-role.enum';
 import { UserStatus } from '../src/users/enums/user-status.enum';
 import { nextSequence } from './support/factories/sequence';
@@ -25,9 +27,11 @@ import { registeredRoutes } from './support/routes';
 import { actingAs, deliver, placeOrder } from './support/shopper';
 import { createTestApp } from './support/test-app';
 import {
+  ADMIN_ADMINS_PATH,
   ADMIN_CATEGORIES_PATH,
   ADMIN_ORDERS_PATH,
   ADMIN_PRODUCTS_PATH,
+  ADMIN_SHOPS_PATH,
   ADMIN_STATS_PATHS,
   ADMIN_SUGGESTIONS_PATH,
   ADMIN_USERS_PATH,
@@ -38,13 +42,18 @@ import {
   CATEGORIES_PATH,
   CHAT_CONVERSATIONS_PATH,
   HEALTH_PATH,
+  MY_SHOP_PATH,
   ORDERS_PATH,
   PRODUCTS_PATH,
   PROFILE_PATHS,
   REVIEWS_PATH,
   SEEDED_USER_PASSWORD,
+  SELLER_ORDERS_PATH,
+  SELLER_PRODUCTS_PATH,
+  SHOPS_PATH,
   SUGGESTIONS_PATH,
   TEST_RECEIVER,
+  TEST_SHOP,
   TEST_SUGGESTION,
   conversationMessagesPath,
   conversationReadPath,
@@ -79,6 +88,12 @@ const signedIn = (status = 200) => ({
   admin: status,
 });
 const adminOnly = (status = 200) => ({ guest: 401, user: 403, admin: status });
+const notForAdmins = (status = 200) => ({
+  guest: 401,
+  user: status,
+  admin: 403,
+});
+const shopOwnerOnly = () => ({ guest: 401, user: 200, admin: 404 });
 
 class Fixtures {
   private readonly built = new Map<string, Promise<unknown>>();
@@ -187,6 +202,58 @@ class Fixtures {
     });
   }
 
+  shop(status = ShopStatus.Active): Promise<Shop> {
+    return this.once(`shop:${status}`, async () =>
+      this.ctx.shops.shop(await this.ctx.users.create(), {
+        status,
+        reviewedAt: status === ShopStatus.Pending ? null : new Date(),
+      }),
+    );
+  }
+
+  ownShop(): Promise<Shop> {
+    return this.once('own-shop', () =>
+      this.ctx.shops.shop(this.accounts.user.user),
+    );
+  }
+
+  sellerProduct(): Promise<Product> {
+    return this.once('seller-product', async () =>
+      this.ctx.catalog.product(await this.category(), {
+        shopId: (await this.ownShop()).id,
+        status: ProductStatus.Draft,
+      }),
+    );
+  }
+
+  sellerImage(): Promise<{ productId: string; imageId: string }> {
+    return this.once('seller-image', async () => {
+      const { id } = await this.sellerProduct();
+      const response = await actingAs(this.ctx, this.accounts.user)
+        .post(`${SELLER_PRODUCTS_PATH}/${id}/images`)
+        .attach('files', PNG_IMAGE, 'photo.png')
+        .expect(201);
+      const [image] = (response.body as ProductImagesResponseDto).images;
+
+      return { productId: id, imageId: image.id };
+    });
+  }
+
+  shopOrder(): Promise<string> {
+    return this.once('shop-order', async () => {
+      const product = await this.ctx.catalog.product(await this.category(), {
+        shopId: (await this.ownShop()).id,
+      });
+      const order = await this.ctx.orders.order(
+        await this.ctx.users.create(),
+        product,
+        { shopId: product.shopId },
+      );
+
+      return order.code;
+    });
+  }
+
   conversation(): Promise<string> {
     return this.once('conversation', async () => {
       const response = await actingAs(this.ctx, this.accounts.user)
@@ -253,6 +320,11 @@ const PUBLIC_ROUTES: RouteCase[] = [
     build: async (fx) => ({
       path: productSharePath((await fx.product('public')).slug),
     }),
+  },
+  {
+    route: `GET ${SHOPS_PATH}/:slug`,
+    expected: open(),
+    build: async (fx) => ({ path: `${SHOPS_PATH}/${(await fx.shop()).slug}` }),
   },
 ];
 
@@ -322,6 +394,15 @@ const AUTH_ROUTES: RouteCase[] = [
     build: () =>
       Promise.resolve({
         path: AUTH_PATHS.resetPassword,
+        body: { token: 'f'.repeat(64), password: 'Matrix123' },
+      }),
+  },
+  {
+    route: `POST ${AUTH_PATHS.acceptInvitation}`,
+    expected: open(422),
+    build: () =>
+      Promise.resolve({
+        path: AUTH_PATHS.acceptInvitation,
         body: { token: 'f'.repeat(64), password: 'Matrix123' },
       }),
   },
@@ -504,9 +585,152 @@ const SIGNED_IN_ROUTES: RouteCase[] = [
       path: conversationReadPath(await fx.conversation()),
     }),
   },
+  {
+    route: `POST ${SHOPS_PATH}`,
+    expected: notForAdmins(201),
+    build: () =>
+      Promise.resolve({ path: SHOPS_PATH, body: { shop: TEST_SHOP } }),
+  },
+  {
+    route: `GET ${MY_SHOP_PATH}`,
+    expected: shopOwnerOnly(),
+    build: async (fx) => {
+      await fx.ownShop();
+
+      return { path: MY_SHOP_PATH };
+    },
+  },
+  {
+    route: `PATCH ${MY_SHOP_PATH}`,
+    expected: shopOwnerOnly(),
+    build: async (fx) => {
+      await fx.ownShop();
+
+      return { path: MY_SHOP_PATH, body: { shop: { phone: '0912345678' } } };
+    },
+  },
+];
+
+const SELLER_ROUTES: RouteCase[] = [
+  {
+    route: `GET ${SELLER_PRODUCTS_PATH}`,
+    expected: notForAdmins(),
+    build: async (fx) => {
+      await fx.ownShop();
+
+      return { path: SELLER_PRODUCTS_PATH };
+    },
+  },
+  {
+    route: `POST ${SELLER_PRODUCTS_PATH}`,
+    expected: notForAdmins(201),
+    build: async (fx) => {
+      await fx.ownShop();
+
+      return {
+        path: SELLER_PRODUCTS_PATH,
+        body: {
+          product: {
+            name: 'Sản phẩm của shop',
+            price: 100_000,
+            stock: 1,
+            categoryId: (await fx.category()).id,
+          },
+        },
+      };
+    },
+  },
+  {
+    route: `PATCH ${SELLER_PRODUCTS_PATH}/:id`,
+    expected: notForAdmins(),
+    build: async (fx) => ({
+      path: `${SELLER_PRODUCTS_PATH}/${(await fx.sellerProduct()).id}`,
+      body: { product: { price: 120_000 } },
+    }),
+  },
+  {
+    route: `DELETE ${SELLER_PRODUCTS_PATH}/:id`,
+    expected: notForAdmins(204),
+    build: async (fx) => ({
+      path: `${SELLER_PRODUCTS_PATH}/${(await fx.sellerProduct()).id}`,
+    }),
+  },
+  {
+    route: `POST ${SELLER_PRODUCTS_PATH}/:id/images`,
+    expected: notForAdmins(201),
+    build: async (fx) => ({
+      path: `${SELLER_PRODUCTS_PATH}/${(await fx.sellerProduct()).id}/images`,
+      upload: { field: 'files', contents: PNG_IMAGE },
+    }),
+  },
+  {
+    route: `DELETE ${SELLER_PRODUCTS_PATH}/:id/images/:imageId`,
+    expected: notForAdmins(204),
+    build: async (fx) => {
+      const { productId, imageId } = await fx.sellerImage();
+
+      return {
+        path: `${SELLER_PRODUCTS_PATH}/${productId}/images/${imageId}`,
+      };
+    },
+  },
+  {
+    route: `GET ${SELLER_ORDERS_PATH}`,
+    expected: notForAdmins(),
+    build: async (fx) => {
+      await fx.ownShop();
+
+      return { path: SELLER_ORDERS_PATH };
+    },
+  },
+  {
+    route: `GET ${SELLER_ORDERS_PATH}/:code`,
+    expected: notForAdmins(),
+    build: async (fx) => ({
+      path: `${SELLER_ORDERS_PATH}/${await fx.shopOrder()}`,
+    }),
+  },
+  {
+    route: `PATCH ${SELLER_ORDERS_PATH}/:code/status`,
+    expected: notForAdmins(),
+    build: async (fx) => ({
+      path: `${SELLER_ORDERS_PATH}/${await fx.shopOrder()}/status`,
+      body: { order: { status: OrderStatus.Confirmed } },
+    }),
+  },
 ];
 
 const ADMIN_ROUTES: RouteCase[] = [
+  {
+    route: `GET ${ADMIN_SHOPS_PATH}`,
+    expected: adminOnly(),
+    build: at(ADMIN_SHOPS_PATH),
+  },
+  {
+    route: `PATCH ${ADMIN_SHOPS_PATH}/:id/status`,
+    expected: adminOnly(),
+    build: async (fx) => ({
+      path: `${ADMIN_SHOPS_PATH}/${(await fx.shop(ShopStatus.Pending)).id}/status`,
+      body: { shop: { status: ShopStatus.Active } },
+    }),
+  },
+  {
+    route: `POST ${ADMIN_ADMINS_PATH}`,
+    expected: adminOnly(201),
+    build: () => {
+      const sequence = nextSequence();
+
+      return Promise.resolve({
+        path: ADMIN_ADMINS_PATH,
+        body: {
+          admin: {
+            email: `invited-${sequence}@example.com`,
+            username: `invited_${sequence}`,
+          },
+        },
+      });
+    },
+  },
   {
     route: `GET ${ADMIN_USERS_PATH}`,
     expected: adminOnly(),
@@ -661,6 +885,7 @@ const ALL_ROUTES = [
   ...PUBLIC_ROUTES,
   ...AUTH_ROUTES,
   ...SIGNED_IN_ROUTES,
+  ...SELLER_ROUTES,
   ...ADMIN_ROUTES,
 ];
 
@@ -743,6 +968,7 @@ describe('Authorization matrix (e2e)', () => {
     ['public', PUBLIC_ROUTES],
     ['auth', AUTH_ROUTES],
     ['signed-in', SIGNED_IN_ROUTES],
+    ['seller', SELLER_ROUTES],
     ['admin', ADMIN_ROUTES],
   ])('%s routes', (_group, cases) => {
     it.each(cases.map((routeCase) => [routeCase.route, routeCase] as const))(

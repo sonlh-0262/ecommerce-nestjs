@@ -54,6 +54,7 @@ export const USER_TOKEN_PATTERN = new RegExp(
 export const USER_TOKEN_TTL_MINUTES: Record<UserTokenType, number> = {
   [UserTokenType.EmailVerify]: 24 * 60,
   [UserTokenType.ResetPassword]: 30,
+  [UserTokenType.Invitation]: 3 * 24 * 60,
 };
 
 export const USER_UNIQUE_CONFLICTS: Record<string, string> = {

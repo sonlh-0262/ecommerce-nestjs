@@ -1,5 +1,5 @@
 import { Product } from '../products/entities/product.entity';
-import { priceOrder } from './order-pricing';
+import { priceOrder, splitByShop } from './order-pricing';
 
 describe('priceOrder', () => {
   const SHIPPING_FEE = 30000;
@@ -60,5 +60,34 @@ describe('priceOrder', () => {
     expect(
       priceOrder([{ product: product(100000), quantity: 1 }], 0),
     ).toMatchObject({ subtotal: 100000, shippingFee: 0, total: 100000 });
+  });
+});
+
+describe('splitByShop', () => {
+  const product = (id: string, shopId: string | null) =>
+    ({ id, shopId }) as Product;
+
+  it('groups the lines by shop in the order they first appear', () => {
+    const lines = [
+      { product: product('p1', 's1'), quantity: 1 },
+      { product: product('p2', null), quantity: 2 },
+      { product: product('p3', 's1'), quantity: 3 },
+      { product: product('p4', 's2'), quantity: 4 },
+    ];
+
+    expect(splitByShop(lines)).toEqual([
+      { shopId: 's1', lines: [lines[0], lines[2]] },
+      { shopId: null, lines: [lines[1]] },
+      { shopId: 's2', lines: [lines[3]] },
+    ]);
+  });
+
+  it('keeps a cart of the platform alone in one group', () => {
+    const lines = [
+      { product: product('p1', null), quantity: 1 },
+      { product: product('p2', null), quantity: 1 },
+    ];
+
+    expect(splitByShop(lines)).toEqual([{ shopId: null, lines }]);
   });
 });

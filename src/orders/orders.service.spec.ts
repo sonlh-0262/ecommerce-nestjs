@@ -48,6 +48,7 @@ describe('OrdersService', () => {
       stock: 10,
       status: ProductStatus.Published,
       deletedAt: null,
+      shopId: null,
       ...overrides,
     }) as Product;
 
@@ -197,6 +198,7 @@ describe('OrdersService', () => {
         expect.objectContaining({
           code: CODE,
           userId: USER.id,
+          shopId: null,
           note: null,
           status: OrderStatus.Pending,
           paymentStatus: PaymentStatus.Unpaid,
@@ -297,11 +299,81 @@ describe('OrdersService', () => {
     });
 
     it('returns the full detail of the new order', async () => {
-      await service.checkout(USER, input);
+      await expect(service.checkout(USER, input)).resolves.toEqual([
+        { order: expect.objectContaining({ id: 'o1', code: CODE }) as Order },
+      ]);
+    });
 
-      expect(viewMock.detailOf).toHaveBeenCalledWith(
-        expect.objectContaining({ id: 'o1', code: CODE }),
-      );
+    describe('a cart of several shops', () => {
+      const CODES = [
+        'ORD-20261105-0001',
+        'ORD-20261105-0002',
+        'ORD-20261105-0003',
+      ];
+
+      beforeEach(() => {
+        cartMock.lockItems.mockResolvedValue([
+          cartItem('p1', 1),
+          cartItem('p2', 2),
+          cartItem('p3', 1),
+          cartItem('p4', 3),
+        ]);
+        productsMock.lockForSale.mockResolvedValue([
+          product({ id: 'p1', shopId: 's1', price: 100000 }),
+          product({ id: 'p2', shopId: null, price: 20000 }),
+          product({ id: 'p3', shopId: 's2', price: 70000 }),
+          product({ id: 'p4', shopId: 's1', price: 10000 }),
+        ]);
+        CODES.forEach((code) => codesMock.next.mockResolvedValueOnce(code));
+      });
+
+      it('places one order per shop, each with its own code and shipping fee', async () => {
+        const placed = await service.checkout(USER, input);
+
+        expect(placed).toHaveLength(3);
+        expect(managerMock.create.mock.calls.map(([, value]) => value)).toEqual(
+          [
+            expect.objectContaining({
+              code: CODES[0],
+              shopId: 's1',
+              subtotal: 130000,
+              shippingFee: SHIPPING_FEE,
+              total: 160000,
+            }),
+            expect.objectContaining({
+              code: CODES[1],
+              shopId: null,
+              subtotal: 40000,
+              shippingFee: SHIPPING_FEE,
+              total: 70000,
+            }),
+            expect.objectContaining({
+              code: CODES[2],
+              shopId: 's2',
+              subtotal: 70000,
+              shippingFee: SHIPPING_FEE,
+              total: 100000,
+            }),
+          ],
+        );
+      });
+
+      it('empties the whole cart once, in the same transaction', async () => {
+        await service.checkout(USER, input);
+
+        expect(transaction).toHaveBeenCalledTimes(1);
+        expect(cartMock.removeItems).toHaveBeenCalledTimes(1);
+      });
+
+      it('mails one confirmation per order', async () => {
+        await service.checkout(USER, input);
+
+        expect(
+          mailMock.enqueue.mock.calls.map(
+            ([, payload]) => (payload as { orderCode: string }).orderCode,
+          ),
+        ).toEqual(CODES);
+      });
     });
   });
 

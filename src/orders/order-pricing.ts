@@ -8,11 +8,32 @@ export interface OrderLine {
 
 export interface PricedOrderLine extends OrderLine, LinePrice {}
 
+export interface ShopLines {
+  shopId: string | null;
+  lines: OrderLine[];
+}
+
 export interface PricedOrder {
   lines: PricedOrderLine[];
   subtotal: number;
   shippingFee: number;
   total: number;
+}
+
+export function splitByShop(lines: OrderLine[]): ShopLines[] {
+  const groups = new Map<string | null, OrderLine[]>();
+
+  for (const line of lines) {
+    const group = groups.get(line.product.shopId);
+
+    if (group) {
+      group.push(line);
+    } else {
+      groups.set(line.product.shopId, [line]);
+    }
+  }
+
+  return [...groups].map(([shopId, grouped]) => ({ shopId, lines: grouped }));
 }
 
 export function priceOrder(

@@ -5,6 +5,8 @@ import {
   toCategoryRef,
 } from '../../categories/dto/category.dto';
 import { Category } from '../../categories/entities/category.entity';
+import { ShopRefDto, toShopRef } from '../../shops/dto/shop-ref.dto';
+import { Shop } from '../../shops/entities/shop.entity';
 import { ProductImage } from '../entities/product-image.entity';
 import { Product } from '../entities/product.entity';
 import { ProductStatus } from '../enums/product-status.enum';
@@ -75,6 +77,13 @@ export class ProductFieldsDto {
   })
   thumbnailUrl: string | null;
 
+  @ApiProperty({
+    type: ShopRefDto,
+    nullable: true,
+    description: 'The shop selling it; null for a product of the platform.',
+  })
+  shop: ShopRefDto | null;
+
   @ApiProperty({ example: '2026-10-01T08:30:00.000Z' })
   createdAt: string;
 }
@@ -129,6 +138,7 @@ export function toProductImageDto(image: ProductImage): ProductImageDto {
 function toProductFields(
   product: Product,
   thumbnailUrl: string | null,
+  shop: Shop | null,
 ): ProductFieldsDto {
   return {
     id: product.id,
@@ -143,6 +153,7 @@ function toProductFields(
     averageRating: product.averageRating,
     reviewCount: product.reviewCount,
     thumbnailUrl,
+    shop: toShopRef(shop),
     createdAt: product.createdAt.toISOString(),
   };
 }
@@ -151,9 +162,10 @@ export function toProductSummary(
   product: Product,
   category: Category,
   thumbnailUrl: string | null,
+  shop: Shop | null,
 ): ProductSummaryDto {
   return {
-    ...toProductFields(product, thumbnailUrl),
+    ...toProductFields(product, thumbnailUrl, shop),
     category: toCategoryRef(category),
   };
 }
@@ -162,12 +174,13 @@ export function toProductResponse(
   product: Product,
   category: Category,
   images: ProductImage[],
+  shop: Shop | null,
 ): ProductResponseDto {
   const thumbnail = images.find((image) => image.isThumbnail);
 
   return {
     product: {
-      ...toProductFields(product, thumbnail?.attachment.url ?? null),
+      ...toProductFields(product, thumbnail?.attachment.url ?? null, shop),
       description: product.description,
       images: images.map(toProductImageDto),
       category: {

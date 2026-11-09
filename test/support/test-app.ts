@@ -26,10 +26,12 @@ import { Order } from '../../src/orders/entities/order.entity';
 import { Product } from '../../src/products/entities/product.entity';
 import { REDIS_CLIENT } from '../../src/redis/redis.constants';
 import { Review } from '../../src/reviews/entities/review.entity';
+import { Shop } from '../../src/shops/entities/shop.entity';
 import { User } from '../../src/users/entities/user.entity';
 import { PasswordService } from '../../src/users/password.service';
 import { CatalogFactory } from './factories/catalog.factory';
 import { OrderFactory } from './factories/order.factory';
+import { ShopFactory } from './factories/shop.factory';
 import { UserFactory } from './factories/user.factory';
 import { TestAppOptions } from './interfaces/test-app-options.interface';
 import { TestContext } from './interfaces/test-context.interface';
@@ -100,6 +102,7 @@ export async function createTestApp(
       dataSource.getRepository(OrderItem),
       dataSource.getRepository(Review),
     ),
+    shops: new ShopFactory(dataSource.getRepository(Shop)),
     mail,
     storedFiles: () => storedFiles(storageConfig),
     server: () => app.getHttpServer(),

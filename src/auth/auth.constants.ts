@@ -1,8 +1,13 @@
 import { minutes } from '@nestjs/throttler';
 
+import { SupportedLanguage } from '../common/constants/languages';
 import { trackByIpAndEmail } from '../common/throttling/ip-and-email.tracker';
 import { RouteRateLimit } from '../common/throttling/rate-limit.decorator';
-import { ActionMailJobName, MAIL_JOB } from '../mail/mail.constants';
+import {
+  ActionMailJobName,
+  MAIL_FALLBACK_LANGUAGE,
+  MAIL_JOB,
+} from '../mail/mail.constants';
 import { UserStatus } from '../users/enums/user-status.enum';
 import { UserTokenType } from '../users/enums/user-token-type.enum';
 
@@ -56,9 +61,11 @@ export const ACCOUNT_STATUS_REJECTIONS: Record<UserStatus, string | undefined> =
     [UserStatus.Active]: undefined,
   };
 
+export const INVITED_PASSWORD_BYTES = 32;
+
 export const ACCOUNT_LINKS: Record<
   UserTokenType,
-  { job: ActionMailJobName; path: string }
+  { job: ActionMailJobName; path: string; lang?: SupportedLanguage }
 > = {
   [UserTokenType.EmailVerify]: {
     job: MAIL_JOB.VerifyEmail,
@@ -67,6 +74,11 @@ export const ACCOUNT_LINKS: Record<
   [UserTokenType.ResetPassword]: {
     job: MAIL_JOB.ResetPassword,
     path: '/reset-password',
+  },
+  [UserTokenType.Invitation]: {
+    job: MAIL_JOB.AdminInvitation,
+    path: '/accept-invitation',
+    lang: MAIL_FALLBACK_LANGUAGE,
   },
 };
 
@@ -81,4 +93,5 @@ export const AUTH_RATE_LIMITS = {
   },
   forgotPassword: { limit: 3, ttl: minutes(15), getTracker: trackByIpAndEmail },
   resetPassword: { limit: 5, ttl: minutes(15) },
+  acceptInvitation: { limit: 5, ttl: minutes(15) },
 } satisfies Record<string, RouteRateLimit>;

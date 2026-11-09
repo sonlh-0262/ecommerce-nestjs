@@ -2,6 +2,8 @@ import { ApiProperty } from '@nestjs/swagger';
 
 import { paginated } from '../../common/helpers/paginated';
 import { ErrorBodyDto } from '../../common/dto/error-response.dto';
+import { ShopRefDto, toShopRef } from '../../shops/dto/shop-ref.dto';
+import { Shop } from '../../shops/entities/shop.entity';
 import { OrderItem } from '../entities/order-item.entity';
 import { OrderStatusHistory } from '../entities/order-status-history.entity';
 import { Order } from '../entities/order.entity';
@@ -80,6 +82,14 @@ export class OrderFieldsDto {
   })
   total: number;
 
+  @ApiProperty({
+    type: ShopRefDto,
+    nullable: true,
+    description:
+      'The shop that confirms and ships it; null for an order of the platform.',
+  })
+  shop: ShopRefDto | null;
+
   @ApiProperty({ example: '2026-10-05T03:00:00.000Z' })
   createdAt: string;
 }
@@ -133,6 +143,17 @@ export class OrderDto extends OrderFieldsDto {
 export class OrderResponseDto {
   @ApiProperty({ type: OrderDto })
   order: OrderDto;
+}
+
+export class PlacedOrdersResponseDto {
+  @ApiProperty({
+    type: [OrderDto],
+    description: 'One order per shop in the cart, in the order of the cart.',
+  })
+  orders: OrderDto[];
+
+  @ApiProperty({ description: 'Orders placed.', example: 2 })
+  ordersCount: number;
 }
 
 export class OrderSummaryDto extends OrderFieldsDto {
@@ -189,13 +210,14 @@ export class ItemsUnavailableErrorResponseDto {
   errors: ItemsUnavailableErrorDto;
 }
 
-function toOrderFields(order: Order): OrderFieldsDto {
+function toOrderFields(order: Order, shop: Shop | null): OrderFieldsDto {
   return {
     code: order.code,
     status: order.status,
     paymentMethod: order.paymentMethod,
     paymentStatus: order.paymentStatus,
     total: order.total,
+    shop: toShopRef(shop),
     createdAt: order.createdAt.toISOString(),
   };
 }
@@ -226,33 +248,41 @@ export function toStatusHistoryDto(
   };
 }
 
-export function toOrderResponse(detail: OrderDetail): OrderResponseDto {
+function toOrderDto(detail: OrderDetail): OrderDto {
   const { order } = detail;
 
   return {
-    order: {
-      ...toOrderFields(order),
-      paidAt: order.paidAt?.toISOString() ?? null,
-      paymentTransactionRef: order.paymentTransactionRef,
-      receiverName: order.receiverName,
-      receiverPhone: order.receiverPhone,
-      shippingAddress: order.shippingAddress,
-      note: order.note,
-      subtotal: order.subtotal,
-      shippingFee: order.shippingFee,
-      reason: order.reason,
-      deliveredAt: order.deliveredAt?.toISOString() ?? null,
-      items: detail.items.map((item) =>
-        toOrderItemDto(item, detail.thumbnailUrls),
-      ),
-      statusHistory: detail.history.map(toStatusHistoryDto),
-    },
+    ...toOrderFields(order, detail.shop),
+    paidAt: order.paidAt?.toISOString() ?? null,
+    paymentTransactionRef: order.paymentTransactionRef,
+    receiverName: order.receiverName,
+    receiverPhone: order.receiverPhone,
+    shippingAddress: order.shippingAddress,
+    note: order.note,
+    subtotal: order.subtotal,
+    shippingFee: order.shippingFee,
+    reason: order.reason,
+    deliveredAt: order.deliveredAt?.toISOString() ?? null,
+    items: detail.items.map((item) =>
+      toOrderItemDto(item, detail.thumbnailUrls),
+    ),
+    statusHistory: detail.history.map(toStatusHistoryDto),
   };
+}
+
+export function toOrderResponse(detail: OrderDetail): OrderResponseDto {
+  return { order: toOrderDto(detail) };
+}
+
+export function toPlacedOrdersResponse(
+  details: OrderDetail[],
+): PlacedOrdersResponseDto {
+  return { orders: details.map(toOrderDto), ordersCount: details.length };
 }
 
 export function toOrderSummaryDto(summary: OrderSummary): OrderSummaryDto {
   return {
-    ...toOrderFields(summary.order),
+    ...toOrderFields(summary.order, summary.shop),
     itemsCount: summary.itemsCount,
     firstItemName: summary.firstItem?.productName ?? null,
     thumbnailUrl: summary.thumbnailUrl,

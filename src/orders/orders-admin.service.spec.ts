@@ -9,7 +9,9 @@ import { EntityManager } from 'typeorm';
 import { transactionalDataSource } from '../database/transaction.fixture';
 import { MAIL_FALLBACK_LANGUAGE, MAIL_JOB } from '../mail/mail.constants';
 import { MailQueueService } from '../mail/mail-queue.service';
+import { Shop } from '../shops/entities/shop.entity';
 import { User } from '../users/entities/user.entity';
+import { UserStatus } from '../users/enums/user-status.enum';
 import { Order } from './entities/order.entity';
 import { OrderStatus } from './enums/order-status.enum';
 import { PaymentMethod } from './enums/payment-method.enum';
@@ -36,6 +38,7 @@ describe('OrdersAdminService', () => {
       id: 'o1',
       code: CODE,
       userId: CUSTOMER.id,
+      shopId: null,
       status: OrderStatus.Pending,
       paymentMethod: PaymentMethod.Cod,
       paymentStatus: PaymentStatus.Unpaid,
@@ -43,7 +46,7 @@ describe('OrdersAdminService', () => {
       ...overrides,
     }) as Order;
 
-  const managerMock = { findOne: jest.fn() };
+  const managerMock = { findOne: jest.fn(), exists: jest.fn() };
   const manager = managerMock as unknown as EntityManager;
   const { dataSource, transaction } = transactionalDataSource(manager);
   const transitionsMock = {
@@ -88,6 +91,79 @@ describe('OrdersAdminService', () => {
     expect(managerMock.findOne).toHaveBeenCalledWith(Order, {
       where: { code: CODE },
       lock: { mode: 'pessimistic_write' },
+    });
+  });
+
+  describe('orders of a shop', () => {
+    const SHOP_ID = 's1';
+    const SELLER = { id: 'seller-1' } as User;
+
+    it('leaves an order of a shop to that shop', async () => {
+      managerMock.findOne.mockResolvedValue(order({ shopId: SHOP_ID }));
+      managerMock.exists.mockResolvedValue(true);
+
+      await expect(
+        service.changeStatus(ADMIN, CODE, { status: OrderStatus.Confirmed }),
+      ).rejects.toThrow(
+        new UnprocessableEntityException('orders.MANAGED_BY_SHOP'),
+      );
+      expect(transitionsMock.apply).not.toHaveBeenCalled();
+      expect(mailMock.enqueue).not.toHaveBeenCalled();
+      expect(managerMock.exists).toHaveBeenCalledWith(Shop, {
+        where: { id: SHOP_ID, owner: { status: UserStatus.Active } },
+      });
+    });
+
+    it('takes over the order of a shop whose owner is locked', async () => {
+      managerMock.findOne.mockResolvedValue(order({ shopId: SHOP_ID }));
+      managerMock.exists.mockResolvedValue(false);
+
+      await service.changeStatus(ADMIN, CODE, {
+        status: OrderStatus.Rejected,
+        reason: REASON,
+      });
+
+      expect(changeOf()).toMatchObject({
+        to: OrderStatus.Rejected,
+        changedBy: ADMIN.id,
+      });
+    });
+
+    it('looks the order up within the shop of the seller', async () => {
+      managerMock.findOne.mockResolvedValue(null);
+
+      await expect(
+        service.changeStatus(
+          SELLER,
+          CODE,
+          { status: OrderStatus.Confirmed },
+          SHOP_ID,
+        ),
+      ).rejects.toThrow(new NotFoundException('orders.NOT_FOUND'));
+      expect(managerMock.findOne).toHaveBeenCalledWith(Order, {
+        where: { code: CODE, shopId: SHOP_ID },
+        lock: { mode: 'pessimistic_write' },
+      });
+    });
+
+    it('lets the seller confirm the order and records who did it', async () => {
+      managerMock.findOne.mockResolvedValue(order({ shopId: SHOP_ID }));
+
+      await service.changeStatus(
+        SELLER,
+        CODE,
+        { status: OrderStatus.Confirmed },
+        SHOP_ID,
+      );
+
+      expect(changeOf()).toMatchObject({
+        to: OrderStatus.Confirmed,
+        changedBy: SELLER.id,
+      });
+      expect(mailMock.enqueue).toHaveBeenCalledWith(
+        MAIL_JOB.OrderStatusChanged,
+        expect.objectContaining({ status: OrderStatus.Confirmed }),
+      );
     });
   });
 

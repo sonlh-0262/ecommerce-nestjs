@@ -1,11 +1,11 @@
 import { ApiProperty, OmitType } from '@nestjs/swagger';
 
 import { paginated } from '../../common/helpers/paginated';
+import { toUserRef, UserRefDto } from '../../users/dto/user-ref.dto';
 import {
   AdminOrderDetail,
   AdminOrderPage,
   AdminOrderSummary,
-  OrderUser,
 } from '../interfaces/admin-order.interface';
 import {
   OrderDto,
@@ -16,34 +16,20 @@ import {
   toStatusHistoryDto,
 } from './order.dto';
 
-export class OrderUserDto {
-  @ApiProperty({ format: 'uuid' })
-  id: string;
-
-  @ApiProperty({ example: 'son@example.com', format: 'email' })
-  email: string;
-
-  @ApiProperty({ example: 'sonlh' })
-  username: string;
-
-  @ApiProperty({ nullable: true, example: 'Lanh Hung Son' })
-  fullName: string | null;
-}
-
 export class AdminOrderStatusHistoryDto extends OrderStatusHistoryDto {
   @ApiProperty({
-    type: OrderUserDto,
+    type: UserRefDto,
     nullable: true,
     description:
-      'Who made the change: the customer for placing and cancelling, an ' +
-      'admin otherwise. null once that account is gone.',
+      'Who made the change: the customer for placing and cancelling, the ' +
+      'admin or the shop owner otherwise. null once that account is gone.',
   })
-  changedBy: OrderUserDto | null;
+  changedBy: UserRefDto | null;
 }
 
 export class AdminOrderDto extends OmitType(OrderDto, ['statusHistory']) {
-  @ApiProperty({ type: OrderUserDto, description: 'Who placed the order.' })
-  user: OrderUserDto;
+  @ApiProperty({ type: UserRefDto, description: 'Who placed the order.' })
+  user: UserRefDto;
 
   @ApiProperty({
     type: [AdminOrderStatusHistoryDto],
@@ -58,8 +44,8 @@ export class AdminOrderResponseDto {
 }
 
 export class AdminOrderSummaryDto extends OrderSummaryDto {
-  @ApiProperty({ type: OrderUserDto, description: 'Who placed the order.' })
-  user: OrderUserDto;
+  @ApiProperty({ type: UserRefDto, description: 'Who placed the order.' })
+  user: UserRefDto;
 }
 
 export class AdminOrdersResponseDto {
@@ -73,15 +59,6 @@ export class AdminOrdersResponseDto {
   ordersCount: number;
 }
 
-function toOrderUserDto(user: OrderUser): OrderUserDto {
-  return {
-    id: user.id,
-    email: user.email,
-    username: user.username,
-    fullName: user.fullName,
-  };
-}
-
 export function toAdminOrderResponse(
   detail: AdminOrderDetail,
 ): AdminOrderResponseDto {
@@ -90,7 +67,7 @@ export function toAdminOrderResponse(
   return {
     order: {
       ...order,
-      user: toOrderUserDto(detail.customer),
+      user: toUserRef(detail.customer),
       statusHistory: detail.history.map((entry) => {
         const actor = entry.changedBy
           ? detail.actors.get(entry.changedBy)
@@ -98,7 +75,7 @@ export function toAdminOrderResponse(
 
         return {
           ...toStatusHistoryDto(entry),
-          changedBy: actor ? toOrderUserDto(actor) : null,
+          changedBy: actor ? toUserRef(actor) : null,
         };
       }),
     },
@@ -110,7 +87,7 @@ function toAdminOrderSummaryDto(
 ): AdminOrderSummaryDto {
   return {
     ...toOrderSummaryDto(summary),
-    user: toOrderUserDto(summary.customer),
+    user: toUserRef(summary.customer),
   };
 }
 

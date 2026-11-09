@@ -41,6 +41,9 @@ export const PRODUCT_IMAGES_POSITION_CHECK = 'CHK_product_images_position';
 export const PRODUCT_IMAGES_POSITION_EXPRESSION = 'position >= 0';
 
 export const UNIQUE_PRODUCTS_SLUG_INDEX = 'UQ_products_slug';
+export const PRODUCTS_SHOP_FK = 'FK_products_shop';
+export const PRODUCTS_SHOP_INDEX = 'IDX_products_shop_created_at';
+export const PRODUCTS_WITH_SHOP_CONDITION = 'shop_id IS NOT NULL';
 export const PRODUCTS_FEATURED_INDEX = 'IDX_products_featured';
 export const PRODUCTS_FEATURED_CONDITION =
   "is_featured AND status = 'PUBLISHED' AND deleted_at IS NULL";

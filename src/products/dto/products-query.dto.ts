@@ -19,6 +19,7 @@ import { PaginationQueryDto } from '../../common/dto/pagination-query.dto';
 import { toBoolean } from '../../common/transforms/boolean';
 import { trimToNull } from '../../common/transforms/trim';
 import { RATING_MAX, RATING_MIN } from '../../reviews/reviews.constants';
+import { SLUG_MAX_LENGTH as SHOP_SLUG_MAX_LENGTH } from '../../shops/shops.constants';
 import {
   DEFAULT_PRODUCT_SORT,
   FEATURED_PRODUCTS_DEFAULT_LIMIT,
@@ -51,6 +52,15 @@ export class ProductsQueryDto extends PaginationQueryDto {
   @IsString(VALIDATION_MESSAGES.isString)
   @MaxLength(CATEGORY_SLUG_MAX_LENGTH, VALIDATION_MESSAGES.maxLength)
   category?: string;
+
+  @ApiPropertyOptional({
+    description: 'Shop slug: only the products this shop sells.',
+    example: 'nha-sach-ha-noi',
+  })
+  @IsOptional()
+  @IsString(VALIDATION_MESSAGES.isString)
+  @MaxLength(SHOP_SLUG_MAX_LENGTH, VALIDATION_MESSAGES.maxLength)
+  shop?: string;
 
   @ApiPropertyOptional({
     description: 'Lowest effective price (sale price when set), in VND.',

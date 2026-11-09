@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { DataSource } from 'typeorm';
 
 import { activationPatch } from '../users/account-activation';
+import { User } from '../users/entities/user.entity';
 import { UserTokenType } from '../users/enums/user-token-type.enum';
 import { PasswordService } from '../users/password.service';
 import { UserTokensService } from '../users/user-tokens.service';
@@ -29,14 +30,34 @@ export class PasswordResetService {
   }
 
   async resetPassword(token: string, password: string): Promise<void> {
+    const user = await this.setPassword(
+      token,
+      password,
+      UserTokenType.ResetPassword,
+    );
+
+    this.logger.log(`Reset the password of user ${user.id}`);
+  }
+
+  async acceptInvitation(token: string, password: string): Promise<void> {
+    const user = await this.setPassword(
+      token,
+      password,
+      UserTokenType.Invitation,
+    );
+
+    this.logger.log(`User ${user.id} accepted an admin invitation`);
+  }
+
+  private async setPassword(
+    token: string,
+    password: string,
+    type: UserTokenType,
+  ): Promise<User> {
     const passwordHash = await this.passwordService.hash(password);
 
-    const user = await this.dataSource.transaction(async (manager) => {
-      const owner = await this.userTokens.consume(
-        manager,
-        token,
-        UserTokenType.ResetPassword,
-      );
+    return this.dataSource.transaction(async (manager) => {
+      const owner = await this.userTokens.consume(manager, token, type);
       const now = new Date();
 
       return this.usersService.update(
@@ -49,7 +70,5 @@ export class PasswordResetService {
         manager,
       );
     });
-
-    this.logger.log(`Reset the password of user ${user.id}`);
   }
 }

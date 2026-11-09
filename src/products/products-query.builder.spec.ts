@@ -62,6 +62,14 @@ describe('products query builder', () => {
       expect(parameters).toEqual(['thoi-trang-nam']);
     });
 
+    it('filters the products of one shop by its slug', () => {
+      const { where, parameters } = filtered({ shop: 'nha-sach-ha-noi' });
+
+      expect(where).toContain('"product"."shop_id" IN (SELECT');
+      expect(where).toContain('"filterShop"."slug" = $1');
+      expect(parameters).toEqual(['nha-sach-ha-noi']);
+    });
+
     it('compares both price bounds to the effective price', () => {
       const { where, parameters } = filtered({
         minPrice: 100000,

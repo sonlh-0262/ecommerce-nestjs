@@ -9,7 +9,9 @@ import { DataSource, EntityManager } from 'typeorm';
 
 import { MAIL_FALLBACK_LANGUAGE, MAIL_JOB } from '../mail/mail.constants';
 import { MailQueueService } from '../mail/mail-queue.service';
+import { Shop } from '../shops/entities/shop.entity';
 import { User } from '../users/entities/user.entity';
+import { UserStatus } from '../users/enums/user-status.enum';
 import { UpdateOrderStatusBodyDto } from './dto/update-order-status.dto';
 import { Order } from './entities/order.entity';
 import { OrderStatus } from './enums/order-status.enum';
@@ -39,12 +41,13 @@ export class OrdersAdminService {
   ) {}
 
   async changeStatus(
-    admin: User,
+    actor: User,
     code: string,
     { status, reason = null }: UpdateOrderStatusBodyDto,
+    shopId?: string,
   ): Promise<AdminOrderDetail> {
     const order = await this.dataSource.transaction(async (manager) => {
-      const order = await this.lockByCode(manager, code);
+      const order = await this.lockByCode(manager, code, shopId);
 
       if (!canTransition(order.status, status)) {
         throw new UnprocessableEntityException(
@@ -65,7 +68,7 @@ export class OrdersAdminService {
       return this.transitions.apply(manager, order, {
         to: status,
         reason,
-        changedBy: admin.id,
+        changedBy: actor.id,
         patch: this.patchFor(order, status, reason),
       });
     });
@@ -83,7 +86,7 @@ export class OrdersAdminService {
       });
     }
 
-    this.logger.log(`Admin ${admin.id} moved order ${order.code} to ${status}`);
+    this.logger.log(`User ${actor.id} moved order ${order.code} to ${status}`);
 
     return detail;
   }
@@ -115,9 +118,10 @@ export class OrdersAdminService {
   private async lockByCode(
     manager: EntityManager,
     code: string,
+    shopId?: string,
   ): Promise<Order> {
     const order = await manager.findOne(Order, {
-      where: { code },
+      where: shopId === undefined ? { code } : { code, shopId },
       lock: { mode: 'pessimistic_write' },
     });
 
@@ -125,6 +129,25 @@ export class OrdersAdminService {
       throw new NotFoundException(this.i18n.t('orders.NOT_FOUND'));
     }
 
+    if (
+      shopId === undefined &&
+      order.shopId &&
+      (await this.isRunByItsOwner(manager, order.shopId))
+    ) {
+      throw new UnprocessableEntityException(
+        this.i18n.t('orders.MANAGED_BY_SHOP'),
+      );
+    }
+
     return order;
+  }
+
+  private isRunByItsOwner(
+    manager: EntityManager,
+    shopId: string,
+  ): Promise<boolean> {
+    return manager.exists(Shop, {
+      where: { id: shopId, owner: { status: UserStatus.Active } },
+    });
   }
 }

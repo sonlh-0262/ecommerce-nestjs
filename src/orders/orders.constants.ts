@@ -17,6 +17,9 @@ export const UNIQUE_ORDERS_CODE_INDEX = 'UQ_orders_code';
 export const ORDERS_USER_LISTING_INDEX = 'IDX_orders_user_created_at';
 export const ORDERS_STATUS_LISTING_INDEX = 'IDX_orders_status_created_at';
 export const ORDERS_DELIVERED_AT_INDEX = 'IDX_orders_delivered_at';
+export const ORDERS_SHOP_FK = 'FK_orders_shop';
+export const ORDERS_SHOP_LISTING_INDEX = 'IDX_orders_shop_created_at';
+export const ORDERS_WITH_SHOP_CONDITION = 'shop_id IS NOT NULL';
 
 export const ORDERS_AMOUNTS_CHECK = 'CHK_orders_amounts';
 export const ORDERS_REJECT_REASON_CHECK = 'CHK_orders_reject_reason';

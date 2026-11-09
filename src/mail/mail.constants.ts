@@ -7,16 +7,20 @@ export const MAIL_QUEUE = 'mail';
 export const MAIL_JOB = {
   VerifyEmail: 'send-verify-email',
   ResetPassword: 'send-reset-password',
+  AdminInvitation: 'send-admin-invitation',
   OrderCreated: 'send-order-created',
   OrderStatusChanged: 'send-order-status-changed',
   OrderAutoCancelled: 'send-order-auto-cancelled',
   MonthlyRevenueReport: 'send-monthly-revenue-report',
+  ShopReviewed: 'send-shop-reviewed',
 } as const;
 
 export type MailJobName = (typeof MAIL_JOB)[keyof typeof MAIL_JOB];
 
 export type ActionMailJobName =
-  typeof MAIL_JOB.VerifyEmail | typeof MAIL_JOB.ResetPassword;
+  | typeof MAIL_JOB.VerifyEmail
+  | typeof MAIL_JOB.ResetPassword
+  | typeof MAIL_JOB.AdminInvitation;
 
 export const MAIL_JOB_OPTIONS: JobsOptions = {
   attempts: 3,
@@ -68,10 +72,12 @@ export const MAIL_PERCENT_MAX_FRACTION_DIGITS = 1;
 export const MAIL_COPY_KEYS: Record<MailJobName, string> = {
   [MAIL_JOB.VerifyEmail]: 'mail.VERIFY_EMAIL',
   [MAIL_JOB.ResetPassword]: 'mail.RESET_PASSWORD',
+  [MAIL_JOB.AdminInvitation]: 'mail.ADMIN_INVITATION',
   [MAIL_JOB.OrderCreated]: 'mail.ORDER_CREATED',
   [MAIL_JOB.OrderStatusChanged]: 'mail.ORDER_STATUS_CHANGED',
   [MAIL_JOB.OrderAutoCancelled]: 'mail.ORDER_AUTO_CANCELLED',
   [MAIL_JOB.MonthlyRevenueReport]: 'mail.MONTHLY_REVENUE_REPORT',
+  [MAIL_JOB.ShopReviewed]: 'mail.SHOP_REVIEWED',
 };
 
 export const IMPLICIT_TLS_PORT = 465;

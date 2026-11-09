@@ -191,6 +191,30 @@ export class AuthController {
     return this.message('auth.PASSWORD_RESET');
   }
 
+  @Post('accept-invitation')
+  @Public()
+  @HttpCode(HttpStatus.OK)
+  @RateLimit(AUTH_RATE_LIMITS.acceptInvitation)
+  @ApiOperation({
+    summary: 'Accept an admin invitation',
+    description:
+      'Redeems the invitation link: sets the password and activates the ' +
+      'admin account. An expired link can be replaced through ' +
+      'forgot-password.',
+  })
+  @ApiOkResponse({ type: MessageResponseDto })
+  @ApiErrorResponse(
+    HttpStatus.UNPROCESSABLE_ENTITY,
+    'The link is unknown, already used or expired.',
+  )
+  async acceptInvitation(
+    @Body() dto: ResetPasswordDto,
+  ): Promise<MessageResponseDto> {
+    await this.passwordResetService.acceptInvitation(dto.token, dto.password);
+
+    return this.message('auth.INVITATION_ACCEPTED');
+  }
+
   private message(key: string): MessageResponseDto {
     return { message: this.i18n.t(key) };
   }

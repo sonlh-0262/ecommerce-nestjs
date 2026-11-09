@@ -1,7 +1,7 @@
 import { ConfigService } from '@nestjs/config';
 
 import { AppConfig } from '../config/configuration';
-import { MAIL_JOB } from '../mail/mail.constants';
+import { MAIL_FALLBACK_LANGUAGE, MAIL_JOB } from '../mail/mail.constants';
 import { MailQueueService } from '../mail/mail-queue.service';
 import { transactionalDataSource } from '../database/transaction.fixture';
 import { buildUser } from '../users/entities/user.fixture';
@@ -40,9 +40,25 @@ describe('AccountLinksService', () => {
 
   describe('send', () => {
     it.each([
-      [UserTokenType.EmailVerify, MAIL_JOB.VerifyEmail, '/verify-email'],
-      [UserTokenType.ResetPassword, MAIL_JOB.ResetPassword, '/reset-password'],
-    ])('mails a %s link to the web app', async (type, job, path) => {
+      [
+        UserTokenType.EmailVerify,
+        MAIL_JOB.VerifyEmail,
+        '/verify-email',
+        undefined,
+      ],
+      [
+        UserTokenType.ResetPassword,
+        MAIL_JOB.ResetPassword,
+        '/reset-password',
+        undefined,
+      ],
+      [
+        UserTokenType.Invitation,
+        MAIL_JOB.AdminInvitation,
+        '/accept-invitation',
+        MAIL_FALLBACK_LANGUAGE,
+      ],
+    ])('mails a %s link to the web app', async (type, job, path, lang) => {
       const user = buildUser();
 
       await service.send(user, type, TOKEN);
@@ -52,6 +68,7 @@ describe('AccountLinksService', () => {
         fullName: user.fullName,
         expiresInMinutes: USER_TOKEN_TTL_MINUTES[type],
         actionUrl: `${WEB_URL}${path}?token=${TOKEN}`,
+        lang,
       });
     });
   });

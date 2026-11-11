@@ -5,6 +5,7 @@ import { CacheModule } from '../cache/cache.module';
 import { CartModule } from '../cart/cart.module';
 import { CategoriesModule } from '../categories/categories.module';
 import { OrdersModule } from '../orders/orders.module';
+import { PaymentsModule } from '../payments/payments.module';
 import { ProductsModule } from '../products/products.module';
 import { ReviewsModule } from '../reviews/reviews.module';
 import { StatsModule } from '../stats/stats.module';
@@ -32,6 +33,7 @@ import { SeedDataReset } from './seeders/seed-data-reset';
     CacheModule,
     CartModule,
     OrdersModule,
+    PaymentsModule,
     ReviewsModule,
     StatsModule,
   ],

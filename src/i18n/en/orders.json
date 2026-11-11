@@ -8,5 +8,6 @@
   "CODE_SEQUENCE_EXHAUSTED": "Too many orders today, please try again later",
   "INVALID_TRANSITION": "Cannot change an order from {from} to {to}",
   "REASON_REQUIRED": "A reason of at least {min} characters is required to reject an order",
-  "MANAGED_BY_SHOP": "This order belongs to a shop, only the shop can change its status"
+  "MANAGED_BY_SHOP": "This order belongs to a shop, only the shop can change its status",
+  "AWAITING_PAYMENT": "A card order can only be confirmed once it is paid"
 }

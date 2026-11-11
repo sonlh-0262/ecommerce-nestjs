@@ -126,3 +126,30 @@ export const conversationReadPath = (id: string) =>
   `${CHAT_CONVERSATIONS_PATH}/${id}/read`;
 
 export const SOCKET_EVENT_TIMEOUT_MS = 3000;
+
+export const orderPaymentsPath = (code: string) =>
+  `${ORDERS_PATH}/${code}/payments`;
+
+export const PAYMENT_WEBHOOK_PATHS = {
+  mock: `${API_BASE_PATH}/payments/webhooks/mock`,
+  stripe: `${API_BASE_PATH}/payments/webhooks/stripe`,
+} as const;
+
+export const SIMULATOR_INTENTS_PATH = `${API_BASE_PATH}/payment-simulator/intents`;
+
+export const simulatorPath = (
+  intentId: string,
+  step: 'confirm' | 'authenticate',
+) => `${SIMULATOR_INTENTS_PATH}/${intentId}/${step}`;
+
+export const TEST_CARDS = {
+  success: '4242424242424242',
+  threeDSecure: '4000002500003155',
+  declined: '4000000000000002',
+} as const;
+
+export const TEST_CARD_EXPIRY = { expMonth: 12, expYear: 2034, cvc: '123' };
+
+export const REFUND_POLL_INTERVAL_MS = 50;
+
+export const REFUND_POLL_TIMEOUT_MS = 5000;

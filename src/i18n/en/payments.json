@@ -1,0 +1,9 @@
+{
+  "CARD_ONLY": "This order is not paid by card",
+  "GATEWAY_UNAVAILABLE": "The payment gateway is unavailable, please try again later",
+  "INVALID_WEBHOOK": "The webhook signature or payload is invalid",
+  "WEBHOOK_NOT_FOUND": "This payment provider is not enabled",
+  "SIMULATOR_DISABLED": "The payment simulator is not enabled",
+  "INTENT_NOT_FOUND": "Payment intent not found",
+  "INTENT_NOT_AWAITING": "The payment intent is {status} and cannot take this step"
+}

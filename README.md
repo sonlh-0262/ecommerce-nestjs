@@ -19,6 +19,7 @@ PostgreSQL.
 | API docs       | Swagger / OpenAPI at `/docs`         |
 | Health         | @nestjs/terminus (Postgres + Redis)  |
 | Realtime       | Socket.IO 4 (@nestjs/websockets)     |
+| Card payments  | Stripe SDK 23 + built-in simulator   |
 | Tests          | Jest (unit) + Supertest (e2e)        |
 
 ## Requirements
@@ -120,7 +121,13 @@ and the docs must not move when the API version does.
 | GET    | `/orders`                    | Bearer | default                | My orders: `status`, `from`, `to`, paging      |
 | GET    | `/orders/:code`              | Bearer | default                | One of my orders with items and history        |
 | POST   | `/orders/:code/payment`      | Bearer | default                | Declare a bank transfer (mock payment)         |
-| POST   | `/orders/:code/cancel`       | Bearer | default                | Cancel a PENDING order, stock goes back        |
+| POST   | `/orders/:code/cancel`       | Bearer | default                | Cancel a PENDING order, stock goes back, a card payment is refunded |
+| POST   | `/orders/:code/payments`     | Bearer | 10 / min / token       | Open (or reuse) the card payment intent of a CARD order |
+| GET    | `/orders/:code/payments`     | Bearer | default                | The payment attempts of my order, newest first |
+| POST   | `/payments/webhooks/stripe`  | Signed | default                | Stripe events, checked against `stripe-signature` |
+| POST   | `/payments/webhooks/mock`    | Signed | default                | Simulator events, checked against `mock-signature` |
+| POST   | `/payment-simulator/intents/:id/confirm` | Secret | 20 / min / IP | Pay a simulated intent with a test card    |
+| POST   | `/payment-simulator/intents/:id/authenticate` | Secret | 20 / min / IP | Complete or fail its 3D Secure step   |
 | POST   | `/product-suggestions`       | Bearer | 10 / hour / token      | Suggest a product; at most 5 waiting for review |
 | GET    | `/product-suggestions`       | Bearer | default                | My suggestions with the admin decision         |
 | GET    | `/chat/conversations`        | Bearer | default                | My conversation with the shop (opened on first call); every active one for an admin |
@@ -315,6 +322,55 @@ otherwise) and is unique per product and account (`409`). `averageRating` and
 `reviewCount` on the product are recomputed from the reviews in the same
 transaction as every create, star change and delete.
 
+### Card payments
+
+```bash
+curl -X POST http://localhost:3001/api/v1/orders/ORD-20261110-0001/payments \
+  -H "Authorization: Bearer $TOKEN"
+# -> { "payment": { "providerPaymentId": "mock_pi_...", "clientSecret": "mock_pi_..._secret_...", "status": "PENDING", ... } }
+curl -X POST http://localhost:3001/api/v1/payment-simulator/intents/$INTENT_ID/confirm \
+  -H 'Content-Type: application/json' \
+  -d '{"confirmation":{"clientSecret":"'$CLIENT_SECRET'","cardNumber":"4242 4242 4242 4242","expMonth":12,"expYear":2030,"cvc":"123"}}'
+```
+
+An order placed with `paymentMethod: CARD` stays `UNPAID` until the payment
+provider says otherwise. `POST /orders/:code/payments` opens a payment intent
+for the order total and returns its `clientSecret`; the front-end confirms
+the card with it (Stripe.js in production, the simulator above in
+development), and the provider reports the result to the signed webhook,
+which is the only thing that marks the order `PAID`. Every event is stored
+once in `payment_events`, so a provider retry is acknowledged and skipped.
+A shop cannot confirm a card order before it is paid (`422`), and
+cancelling or rejecting a paid one queues a refund on the `payments` queue.
+A refund still pending after 10 minutes (its job lost or out of retries) is
+queued again by the `payment-refunds-retry` job, every 10 minutes.
+
+`PAYMENT_PROVIDER=mock` (the default, refused in production) runs a fake
+gateway inside the API. Its test cards follow Stripe's:
+
+| Card | Outcome |
+| --- | --- |
+| `4242 4242 4242 4242`, `5555 5555 5555 4444` | Paid |
+| `4000 0025 0000 3155` | 3D Secure: `nextAction: AUTHENTICATE`, then `/authenticate` with `approve` |
+| `4000 0000 0000 0002` | Declined, `card_declined` |
+| `4000 0000 0000 9995` | Declined, `insufficient_funds` |
+| `4000 0000 0000 0069` or a past expiry | Declined, `expired_card` |
+| `4000 0000 0000 0127` | Declined, `incorrect_cvc` |
+
+`PAYMENT_PROVIDER=stripe` needs `STRIPE_SECRET_KEY` and
+`STRIPE_WEBHOOK_SECRET`. Without a Stripe account, run Stripe's own mock
+server and point the SDK at it:
+
+```bash
+docker compose --profile stripe up -d stripe-mock
+# .env: PAYMENT_PROVIDER=stripe, STRIPE_SECRET_KEY=sk_test_123,
+#       STRIPE_WEBHOOK_SECRET=whsec_test, STRIPE_API_URL=http://stripe-mock:12111
+```
+
+With a real test account, `stripe listen --forward-to
+localhost:3001/api/v1/payments/webhooks/stripe` prints the `whsec_` secret
+to use.
+
 ### Shops and admin accounts
 
 ```bash
@@ -342,6 +398,7 @@ curl 'http://localhost:3001/api/v1/admin/stats/overview?from=2026-01-01T00:00:00
 curl 'http://localhost:3001/api/v1/admin/stats/revenue?groupBy=month&year=2026' -H "Authorization: Bearer $ADMIN_TOKEN"
 docker compose exec api npm run console -- job:run monthly-revenue-report
 docker compose exec api npm run console -- job:run orders-auto-cancel
+docker compose exec api npm run console -- job:run payment-refunds-retry
 ```
 
 Revenue only counts `DELIVERED` orders, by the day they were delivered, in the
@@ -560,8 +617,9 @@ startup by `src/config/env.validation.ts`. Those marked *prod* must be set when
 | Mail | `MAIL_HOST` (*prod*), `MAIL_PORT` (*prod*), `MAIL_USER`, `MAIL_PASSWORD`, `MAIL_FROM` (*prod*), `MAIL_FROM_NAME`, `APP_WEB_URL` (*prod*) |
 | Links / time | `APP_API_URL` (*prod*, origin used for share images), `APP_TIMEZONE` (IANA name, default `Asia/Ho_Chi_Minh`) |
 | Files / orders | `STORAGE_ROOT`, `SHIPPING_FEE`, `ORDER_AUTO_CANCEL_DAYS` |
+| Payments | `PAYMENT_PROVIDER` (*prod*, `mock` refused), `MOCK_PAYMENT_WEBHOOK_SECRET`, `STRIPE_SECRET_KEY` + `STRIPE_WEBHOOK_SECRET` (with `stripe`), `STRIPE_API_URL` |
 | Seeding | `SEED_ADMIN_EMAIL`, `SEED_ADMIN_PASSWORD` |
-| Docker host ports | `API_HOST_PORT`, `DEBUG_HOST_PORT`, `DB_HOST_PORT`, `REDIS_HOST_PORT`, `MAILPIT_SMTP_HOST_PORT`, `MAILPIT_UI_HOST_PORT` |
+| Docker host ports | `API_HOST_PORT`, `DEBUG_HOST_PORT`, `DB_HOST_PORT`, `REDIS_HOST_PORT`, `MAILPIT_SMTP_HOST_PORT`, `MAILPIT_UI_HOST_PORT`, `STRIPE_MOCK_HOST_PORT` |
 
 ## Layout
 
@@ -576,6 +634,8 @@ src/
   cart/         the shopping cart
   orders/       checkout split per shop, order history, status machine, admin
                 and seller order management
+  payments/     card payment attempts, Stripe gateway, signed webhooks,
+                refunds queue, simulator/ (fake gateway + test cards)
   reviews/      product reviews and the rating aggregate
   chat/         customer <-> admin chat: REST history and the /chat gateway
   cache/        Redis cache with generation-based invalidation

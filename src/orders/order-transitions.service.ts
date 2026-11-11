@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { EntityManager } from 'typeorm';
 
+import { PaymentRefundsService } from '../payments/payment-refunds.service';
 import { ProductsService } from '../products/products.service';
 import { OrderItem } from './entities/order-item.entity';
 import { OrderStatusHistory } from './entities/order-status-history.entity';
@@ -10,7 +11,10 @@ import { restoresStock } from './order-status.machine';
 
 @Injectable()
 export class OrderTransitionsService {
-  constructor(private readonly productsService: ProductsService) {}
+  constructor(
+    private readonly productsService: ProductsService,
+    private readonly refunds: PaymentRefundsService,
+  ) {}
 
   async apply(
     manager: EntityManager,
@@ -19,6 +23,7 @@ export class OrderTransitionsService {
   ): Promise<Order> {
     if (restoresStock(to)) {
       await this.restock(manager, order.id);
+      await this.refunds.refundOrder(manager, order);
     }
 
     const changes = { ...patch, status: to };

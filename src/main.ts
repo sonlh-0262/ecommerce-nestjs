@@ -3,12 +3,13 @@ import { ConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
 
 import { AppModule } from './app.module';
-import { configureApp } from './config/app-setup';
+import { APP_FACTORY_OPTIONS, configureApp } from './config/app-setup';
 import { APP_CONFIG_KEY, AppConfig } from './config/configuration';
 import { setupSwagger } from './config/swagger';
 
 async function bootstrap(): Promise<void> {
   const app = await NestFactory.create(AppModule, {
+    ...APP_FACTORY_OPTIONS,
     logger:
       process.env.NODE_ENV === 'production'
         ? ['log', 'error', 'warn']

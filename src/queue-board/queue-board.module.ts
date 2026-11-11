@@ -10,6 +10,7 @@ import {
   BullBoardConfig,
 } from '../config/bull-board.config';
 import { MAIL_QUEUE } from '../mail/mail.constants';
+import { PAYMENTS_QUEUE } from '../payments/payments.constants';
 import { QUEUE_BOARD_ROUTE } from './queue-board.constants';
 
 @Module({
@@ -31,7 +32,10 @@ import { QUEUE_BOARD_ROUTE } from './queue-board.constants';
         };
       },
     }),
-    BullBoardModule.forFeature({ name: MAIL_QUEUE, adapter: BullMQAdapter }),
+    BullBoardModule.forFeature(
+      { name: MAIL_QUEUE, adapter: BullMQAdapter },
+      { name: PAYMENTS_QUEUE, adapter: BullMQAdapter },
+    ),
   ],
 })
 export class QueueBoardModule {}

@@ -72,3 +72,12 @@ export const DEFAULT_STORAGE_ROOT = './storage';
 
 export const DEFAULT_SHIPPING_FEE = 30000;
 export const MIN_SHIPPING_FEE = 0;
+
+export const MOCK_PAYMENT_PROVIDER = 'mock';
+export const STRIPE_PAYMENT_PROVIDER = 'stripe';
+export const DEFAULT_PAYMENT_PROVIDER = MOCK_PAYMENT_PROVIDER;
+export const DEFAULT_MOCK_PAYMENT_WEBHOOK_SECRET =
+  'mock-payment-webhook-secret-for-development';
+export const MIN_WEBHOOK_SECRET_LENGTH = 16;
+export const STRIPE_SECRET_KEY_PATTERN = /^sk_(test|live)_\w+$/;
+export const STRIPE_WEBHOOK_SECRET_PATTERN = /^whsec_\w+$/;

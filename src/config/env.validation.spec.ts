@@ -6,6 +6,11 @@ import { Environment, envValidationSchema } from './env.validation';
 
 describe('envValidationSchema', () => {
   const STRONG_SECRET = 'x'.repeat(MIN_JWT_SECRET_LENGTH);
+  const STRIPE: Record<string, string> = {
+    PAYMENT_PROVIDER: 'stripe',
+    STRIPE_SECRET_KEY: 'sk_live_51abc',
+    STRIPE_WEBHOOK_SECRET: 'whsec_abc123',
+  };
   const PRODUCTION: Record<string, string> = {
     NODE_ENV: Environment.Production,
     JWT_SECRET: STRONG_SECRET,
@@ -14,6 +19,7 @@ describe('envValidationSchema', () => {
     MAIL_FROM: 'no-reply@example.com',
     APP_WEB_URL: 'https://shop.example.com',
     APP_API_URL: 'https://api.example.com',
+    ...STRIPE,
   };
 
   const validate = (env: Record<string, string>) =>
@@ -230,6 +236,80 @@ describe('envValidationSchema', () => {
       expect(
         validate({ DB_SLOW_QUERY_MS: threshold }).error?.message,
       ).toContain('DB_SLOW_QUERY_MS');
+    });
+  });
+
+  describe('PAYMENT_PROVIDER', () => {
+    it('defaults to the simulator outside production', () => {
+      expect(validate({ PAYMENT_PROVIDER: 'mock' }).error).toBeUndefined();
+    });
+
+    it('rejects a provider the API has no gateway for', () => {
+      expect(validate({ PAYMENT_PROVIDER: 'paypal' }).error?.message).toContain(
+        'PAYMENT_PROVIDER',
+      );
+    });
+
+    it('refuses the simulator in production, where any test card would pay', () => {
+      const { error } = validate({ ...PRODUCTION, PAYMENT_PROVIDER: 'mock' });
+
+      expect(error?.message).toContain('PAYMENT_PROVIDER');
+    });
+
+    it('is required in production', () => {
+      const { PAYMENT_PROVIDER: _provider, ...withoutProvider } = PRODUCTION;
+
+      expect(validate(withoutProvider).error?.message).toContain(
+        'PAYMENT_PROVIDER',
+      );
+    });
+
+    it('needs both Stripe secrets once Stripe is chosen', () => {
+      const { error } = validate({ PAYMENT_PROVIDER: 'stripe' });
+
+      expect(error?.message).toContain('STRIPE_SECRET_KEY');
+      expect(error?.message).toContain('STRIPE_WEBHOOK_SECRET');
+    });
+
+    it('accepts the empty Stripe lines of .env.example with the simulator', () => {
+      expect(
+        validate({
+          PAYMENT_PROVIDER: 'mock',
+          STRIPE_SECRET_KEY: '',
+          STRIPE_WEBHOOK_SECRET: '',
+          STRIPE_API_URL: '',
+        }).error,
+      ).toBeUndefined();
+    });
+
+    it('refuses empty Stripe secrets once Stripe is chosen', () => {
+      const { error } = validate({
+        PAYMENT_PROVIDER: 'stripe',
+        STRIPE_SECRET_KEY: '',
+        STRIPE_WEBHOOK_SECRET: '',
+      });
+
+      expect(error?.message).toContain('STRIPE_SECRET_KEY');
+      expect(error?.message).toContain('STRIPE_WEBHOOK_SECRET');
+    });
+
+    it('rejects a publishable key in place of the secret key', () => {
+      const { error } = validate({ ...STRIPE, STRIPE_SECRET_KEY: 'pk_test_1' });
+
+      expect(error?.message).toContain('STRIPE_SECRET_KEY');
+    });
+
+    it('accepts a stripe-mock base URL', () => {
+      expect(
+        validate({ ...STRIPE, STRIPE_API_URL: 'http://stripe-mock:12111' })
+          .error,
+      ).toBeUndefined();
+    });
+
+    it('rejects a short simulator webhook secret', () => {
+      expect(
+        validate({ MOCK_PAYMENT_WEBHOOK_SECRET: 'short' }).error?.message,
+      ).toContain('MOCK_PAYMENT_WEBHOOK_SECRET');
     });
   });
 

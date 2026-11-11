@@ -5,6 +5,7 @@ export const RUN_JOB_COMMAND = 'job:run';
 export const SCHEDULED_JOBS = {
   MonthlyRevenueReport: 'monthly-revenue-report',
   OrdersAutoCancel: 'orders-auto-cancel',
+  PaymentRefundsRetry: 'payment-refunds-retry',
 } as const;
 
 export type ScheduledJobName =
@@ -14,4 +15,5 @@ export const SCHEDULED_JOB_LOCK_TTL_SECONDS: Record<ScheduledJobName, number> =
   {
     [SCHEDULED_JOBS.MonthlyRevenueReport]: 5 * SECONDS_PER_MINUTE,
     [SCHEDULED_JOBS.OrdersAutoCancel]: 2 * SECONDS_PER_MINUTE,
+    [SCHEDULED_JOBS.PaymentRefundsRetry]: 2 * SECONDS_PER_MINUTE,
   };

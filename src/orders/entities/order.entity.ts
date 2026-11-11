@@ -65,10 +65,7 @@ import { OrderStatusHistory } from './order-status-history.entity';
   ORDERS_DELIVERED_AT_CHECK,
   "(status = 'DELIVERED') = (delivered_at IS NOT NULL)",
 )
-@Check(
-  ORDERS_PAID_AT_CHECK,
-  "(payment_status = 'PAID') = (paid_at IS NOT NULL)",
-)
+@Check(ORDERS_PAID_AT_CHECK, "(payment_status = 'UNPAID') = (paid_at IS NULL)")
 @Check(
   ORDERS_TRANSACTION_REF_CHECK,
   "payment_transaction_ref IS NULL OR payment_method = 'BANK_TRANSFER'",

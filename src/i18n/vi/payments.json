@@ -1,0 +1,9 @@
+{
+  "CARD_ONLY": "Đơn hàng này không thanh toán bằng thẻ",
+  "GATEWAY_UNAVAILABLE": "Cổng thanh toán đang không phản hồi, vui lòng thử lại sau",
+  "INVALID_WEBHOOK": "Chữ ký hoặc nội dung webhook không hợp lệ",
+  "WEBHOOK_NOT_FOUND": "Nhà cung cấp thanh toán này chưa được bật",
+  "SIMULATOR_DISABLED": "Trình giả lập thanh toán chưa được bật",
+  "INTENT_NOT_FOUND": "Không tìm thấy phiên thanh toán",
+  "INTENT_NOT_AWAITING": "Phiên thanh toán đang ở trạng thái {status}, không thực hiện được bước này"
+}

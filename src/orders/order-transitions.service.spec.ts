@@ -1,5 +1,6 @@
 import { EntityManager } from 'typeorm';
 
+import { PaymentRefundsService } from '../payments/payment-refunds.service';
 import { ProductsService } from '../products/products.service';
 import { OrderItem } from './entities/order-item.entity';
 import { OrderStatusHistory } from './entities/order-status-history.entity';
@@ -17,9 +18,11 @@ describe('OrderTransitionsService', () => {
   };
   const manager = managerMock as unknown as EntityManager;
   const productsMock = { restock: jest.fn() };
+  const refundsMock = { refundOrder: jest.fn() };
 
   const service = new OrderTransitionsService(
     productsMock as unknown as ProductsService,
+    refundsMock as unknown as PaymentRefundsService,
   );
 
   const order = (status = OrderStatus.Pending): Order =>
@@ -52,6 +55,17 @@ describe('OrderTransitionsService', () => {
     },
   );
 
+  it.each([OrderStatus.Cancelled, OrderStatus.Rejected])(
+    'asks for the card payment back on %s, in the same transaction',
+    async (to) => {
+      const pending = order();
+
+      await service.apply(manager, pending, { to, changedBy: ADMIN_ID });
+
+      expect(refundsMock.refundOrder).toHaveBeenCalledWith(manager, pending);
+    },
+  );
+
   it.each([OrderStatus.Confirmed, OrderStatus.Shipping, OrderStatus.Delivered])(
     'leaves the stock alone on %s',
     async (to) => {
@@ -59,6 +73,7 @@ describe('OrderTransitionsService', () => {
 
       expect(managerMock.find).not.toHaveBeenCalled();
       expect(productsMock.restock).not.toHaveBeenCalled();
+      expect(refundsMock.refundOrder).not.toHaveBeenCalled();
     },
   );
 

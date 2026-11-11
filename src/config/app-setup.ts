@@ -1,4 +1,8 @@
-import { INestApplication, RequestMethod } from '@nestjs/common';
+import {
+  INestApplication,
+  NestApplicationOptions,
+  RequestMethod,
+} from '@nestjs/common';
 import { I18nService, I18nValidationExceptionFilter } from 'nestjs-i18n';
 
 import { HEALTH_ROUTE } from '../common/constants/routes';
@@ -6,6 +10,10 @@ import { toErrorResponse } from '../common/dto/error-response.dto';
 import { AllExceptionsFilter } from '../common/filters/all-exceptions.filter';
 import { createValidationPipe } from '../common/pipes/validation.pipe';
 import { AppConfig } from './configuration';
+
+export const APP_FACTORY_OPTIONS = {
+  rawBody: true,
+} satisfies NestApplicationOptions;
 
 /**
  * Applies every cross-cutting concern (prefix, CORS, validation, i18n error

@@ -1,5 +1,6 @@
 import { SupportedLanguage } from '../../common/constants/languages';
 import { OrderStatus } from '../../orders/enums/order-status.enum';
+import { ShopDecision } from '../../shops/shops.constants';
 import { MAIL_JOB, MailJobName } from '../mail.constants';
 
 export interface BaseMailJob {
@@ -61,13 +62,21 @@ export interface MonthlyRevenueReportMailJob extends GreetedMailJob {
   topProducts: MonthlyReportProduct[];
 }
 
+export interface ShopReviewedMailJob extends GreetedMailJob {
+  shopName: string;
+  status: ShopDecision;
+  reason: string | null;
+}
+
 export interface MailJobPayloadMap {
   [MAIL_JOB.VerifyEmail]: ActionMailJob;
   [MAIL_JOB.ResetPassword]: ActionMailJob;
+  [MAIL_JOB.AdminInvitation]: ActionMailJob;
   [MAIL_JOB.OrderCreated]: OrderCreatedMailJob;
   [MAIL_JOB.OrderStatusChanged]: OrderStatusChangedMailJob;
   [MAIL_JOB.OrderAutoCancelled]: OrderAutoCancelledMailJob;
   [MAIL_JOB.MonthlyRevenueReport]: MonthlyRevenueReportMailJob;
+  [MAIL_JOB.ShopReviewed]: ShopReviewedMailJob;
 }
 
 export type MailJobPayload<T extends MailJobName> = MailJobPayloadMap[T];

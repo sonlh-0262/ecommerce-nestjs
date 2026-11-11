@@ -84,7 +84,8 @@ export class OrdersAdminController {
       'DELIVERED. Rejecting needs a reason and puts the stock back; ' +
       'delivering marks a cash-on-delivery order paid. The customer is ' +
       'emailed on CONFIRMED and REJECTED. Setting the current status again ' +
-      'is refused with 422, so a double click cannot send a second email.',
+      'is refused with 422, so a double click cannot send a second email. ' +
+      'An order of a shop is left to that shop.',
   })
   @ApiParam({ name: 'code', example: 'ORD-20261005-0001' })
   @ApiOkResponse({ type: AdminOrderResponseDto })
@@ -92,8 +93,8 @@ export class OrdersAdminController {
   @ApiErrorResponse(HttpStatus.NOT_FOUND, 'No order has this code.')
   @ApiErrorResponse(
     HttpStatus.UNPROCESSABLE_ENTITY,
-    'The order cannot move from its current status to this one, or a ' +
-      'rejection has no reason.',
+    'The order cannot move from its current status to this one, a ' +
+      'rejection has no reason, or the order belongs to a shop.',
   )
   async changeStatus(
     @CurrentUser() admin: User,

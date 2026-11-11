@@ -30,7 +30,12 @@ import { PaymentStatus } from './enums/payment-status.enum';
 import { OrderDetail } from './interfaces/order-detail.interface';
 import { UnavailableItem } from './interfaces/unavailable-item.interface';
 import { OrderCodeService } from './order-code.service';
-import { OrderLine, PricedOrder, priceOrder } from './order-pricing';
+import {
+  OrderLine,
+  PricedOrder,
+  priceOrder,
+  splitByShop,
+} from './order-pricing';
 import { canTransition } from './order-status.machine';
 import { OrderTransitionsService } from './order-transitions.service';
 import {
@@ -38,6 +43,11 @@ import {
   UNAVAILABLE_ITEM_REASONS,
 } from './orders.constants';
 import { OrdersViewService } from './orders-view.service';
+
+interface PlacedOrder {
+  order: Order;
+  priced: PricedOrder;
+}
 
 @Injectable()
 export class OrdersService {
@@ -59,53 +69,54 @@ export class OrdersService {
       configService.getOrThrow<OrdersConfig>(ORDERS_CONFIG_KEY).shippingFee;
   }
 
-  async checkout(user: User, input: CreateOrderBodyDto): Promise<OrderDetail> {
-    const { order, priced } = await this.dataSource.transaction(
-      async (manager) => {
-        const cartItems = await this.cartService.lockItems(manager, user.id);
+  async checkout(
+    user: User,
+    input: CreateOrderBodyDto,
+  ): Promise<OrderDetail[]> {
+    const placed = await this.dataSource.transaction(async (manager) => {
+      const cartItems = await this.cartService.lockItems(manager, user.id);
 
-        if (cartItems.length === 0) {
-          throw new UnprocessableEntityException(this.i18n.t('cart.EMPTY'));
-        }
+      if (cartItems.length === 0) {
+        throw new UnprocessableEntityException(this.i18n.t('cart.EMPTY'));
+      }
 
-        const products = await this.productsService.lockForSale(
-          manager,
-          cartItems.map(({ productId }) => productId),
-        );
-        const productsById = new Map(products.map((p) => [p.id, p]));
-        const lines = cartItems.map(({ productId, quantity }) => ({
-          product: productsById.get(productId) as Product,
-          quantity,
-        }));
-
-        this.assertAvailable(lines);
-
-        const priced = priceOrder(lines, this.shippingFee);
-        const order = await this.placeOrder(manager, user, input, priced);
-
-        await this.cartService.removeItems(manager, cartItems);
-
-        return { order, priced };
-      },
-    );
-
-    await this.mail.enqueue(MAIL_JOB.OrderCreated, {
-      to: user.email,
-      fullName: user.fullName,
-      orderCode: order.code,
-      items: priced.lines.map(({ product, quantity, lineTotal }) => ({
-        name: product.name,
+      const products = await this.productsService.lockForSale(
+        manager,
+        cartItems.map(({ productId }) => productId),
+      );
+      const productsById = new Map(products.map((p) => [p.id, p]));
+      const lines = cartItems.map(({ productId, quantity }) => ({
+        product: productsById.get(productId) as Product,
         quantity,
-        lineTotal,
-      })),
-      subtotal: order.subtotal,
-      shippingFee: order.shippingFee,
-      total: order.total,
-      shippingAddress: order.shippingAddress,
-    });
-    this.logger.log(`User ${user.id} placed order ${order.code}`);
+      }));
 
-    return this.view.detailOf(order);
+      this.assertAvailable(lines);
+
+      const orders: PlacedOrder[] = [];
+
+      for (const shop of splitByShop(lines)) {
+        const priced = priceOrder(shop.lines, this.shippingFee);
+        const order = await this.placeOrder(
+          manager,
+          user,
+          input,
+          priced,
+          shop.shopId,
+        );
+
+        orders.push({ order, priced });
+      }
+
+      await this.cartService.removeItems(manager, cartItems);
+
+      return orders;
+    });
+
+    for (const { order, priced } of placed) {
+      await this.notifyPlaced(user, order, priced);
+    }
+
+    return Promise.all(placed.map(({ order }) => this.view.detailOf(order)));
   }
 
   async pay(
@@ -182,6 +193,7 @@ export class OrdersService {
     user: User,
     input: CreateOrderBodyDto,
     priced: PricedOrder,
+    shopId: string | null,
   ): Promise<Order> {
     const code = await this.orderCodes.next(manager);
     const order = await manager.save(
@@ -189,6 +201,7 @@ export class OrdersService {
         ...input,
         code,
         userId: user.id,
+        shopId,
         note: input.note ?? null,
         status: OrderStatus.Pending,
         paymentStatus: PaymentStatus.Unpaid,
@@ -223,6 +236,28 @@ export class OrdersService {
     });
 
     return order;
+  }
+
+  private async notifyPlaced(
+    user: User,
+    order: Order,
+    priced: PricedOrder,
+  ): Promise<void> {
+    await this.mail.enqueue(MAIL_JOB.OrderCreated, {
+      to: user.email,
+      fullName: user.fullName,
+      orderCode: order.code,
+      items: priced.lines.map(({ product, quantity, lineTotal }) => ({
+        name: product.name,
+        quantity,
+        lineTotal,
+      })),
+      subtotal: order.subtotal,
+      shippingFee: order.shippingFee,
+      total: order.total,
+      shippingAddress: order.shippingAddress,
+    });
+    this.logger.log(`User ${user.id} placed order ${order.code}`);
   }
 
   private assertAvailable(lines: OrderLine[]): void {

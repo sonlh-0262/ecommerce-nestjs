@@ -27,8 +27,10 @@ import {
   ItemsUnavailableErrorResponseDto,
   OrderResponseDto,
   OrdersResponseDto,
+  PlacedOrdersResponseDto,
   toOrderResponse,
   toOrdersResponse,
+  toPlacedOrdersResponse,
 } from './dto/order.dto';
 import { OrdersQueryDto } from './dto/orders-query.dto';
 import { PayOrderDto } from './dto/pay-order.dto';
@@ -51,10 +53,12 @@ export class OrdersController {
     summary: 'Place an order from my cart',
     description:
       'Orders every item of the cart at its current price, takes the ' +
-      'quantities out of the stock and empties the cart. The order starts ' +
-      'PENDING and a confirmation email is sent.',
+      'quantities out of the stock and empties the cart. The cart is split ' +
+      'into one order per shop, each with its own code and shipping fee, ' +
+      'so that every shop confirms its own order. Each order starts ' +
+      'PENDING and a confirmation email is sent for each.',
   })
-  @ApiCreatedResponse({ type: OrderResponseDto })
+  @ApiCreatedResponse({ type: PlacedOrdersResponseDto })
   @ApiErrorResponse(HttpStatus.BAD_REQUEST, 'The payload failed validation.')
   @ApiErrorResponse(
     HttpStatus.CONFLICT,
@@ -66,8 +70,10 @@ export class OrdersController {
   async checkout(
     @CurrentUser() user: User,
     @Body() dto: CreateOrderDto,
-  ): Promise<OrderResponseDto> {
-    return toOrderResponse(await this.ordersService.checkout(user, dto.order));
+  ): Promise<PlacedOrdersResponseDto> {
+    return toPlacedOrdersResponse(
+      await this.ordersService.checkout(user, dto.order),
+    );
   }
 
   @Get()

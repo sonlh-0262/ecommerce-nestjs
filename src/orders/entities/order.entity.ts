@@ -13,6 +13,7 @@ import {
 
 import { numericTransformer } from '../../common/transformers/numeric.transformer';
 import { Review } from '../../reviews/entities/review.entity';
+import { Shop } from '../../shops/entities/shop.entity';
 import { User } from '../../users/entities/user.entity';
 import { OrderStatus } from '../enums/order-status.enum';
 import { PaymentMethod } from '../enums/payment-method.enum';
@@ -26,10 +27,13 @@ import {
   ORDERS_DELIVERED_CONDITION,
   ORDERS_PAID_AT_CHECK,
   ORDERS_REJECT_REASON_CHECK,
+  ORDERS_SHOP_FK,
+  ORDERS_SHOP_LISTING_INDEX,
   ORDERS_STATUS_LISTING_INDEX,
   ORDERS_TRANSACTION_REF_CHECK,
   ORDERS_USER_FK,
   ORDERS_USER_LISTING_INDEX,
+  ORDERS_WITH_SHOP_CONDITION,
   PAYMENT_TRANSACTION_REF_MAX_LENGTH,
   REASON_MAX_LENGTH,
   RECEIVER_NAME_MAX_LENGTH,
@@ -43,6 +47,9 @@ import { OrderStatusHistory } from './order-status-history.entity';
 @Entity('orders')
 @Index(ORDERS_USER_LISTING_INDEX, ['userId', 'createdAt', 'id'])
 @Index(ORDERS_STATUS_LISTING_INDEX, ['status', 'createdAt', 'id'])
+@Index(ORDERS_SHOP_LISTING_INDEX, ['shopId', 'createdAt', 'id'], {
+  where: ORDERS_WITH_SHOP_CONDITION,
+})
 @Index(ORDERS_DELIVERED_AT_INDEX, ['deliveredAt'], {
   where: ORDERS_DELIVERED_CONDITION,
 })
@@ -80,6 +87,13 @@ export class Order {
   @ManyToOne(() => User, (user) => user.orders, { onDelete: 'RESTRICT' })
   @JoinColumn({ name: 'user_id', foreignKeyConstraintName: ORDERS_USER_FK })
   user: User;
+
+  @Column({ name: 'shop_id', type: 'uuid', nullable: true })
+  shopId: string | null;
+
+  @ManyToOne(() => Shop, { nullable: true, onDelete: 'RESTRICT' })
+  @JoinColumn({ name: 'shop_id', foreignKeyConstraintName: ORDERS_SHOP_FK })
+  shop?: Shop | null;
 
   @Column({
     type: 'enum',

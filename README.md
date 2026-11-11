@@ -62,6 +62,9 @@ Change any of these with `API_HOST_PORT`, `DEBUG_HOST_PORT`, `DB_HOST_PORT`,
 - Health check: <http://localhost:3001/health>
 - Mail sent by the app: <http://localhost:8025> (Mailpit - nothing leaves the
   machine)
+- BullMQ dashboard: <http://localhost:3001/api/v1/queues> (HTTP Basic Auth with
+  `BULL_BOARD_USERNAME` / `BULL_BOARD_PASSWORD`; off unless
+  `BULL_BOARD_ENABLED=true`)
 
 After pulling a change that adds packages, rebuild the API image and renew its
 `node_modules` volume, or the container keeps running the old dependencies:
@@ -92,6 +95,7 @@ and the docs must not move when the API version does.
 | POST   | `/auth/logout`               | Bearer | default                | Revoke the token used for the request          |
 | POST   | `/auth/forgot-password`      | Guest  | 3 / 15 min / IP+email  | Email a password reset link (always 200)       |
 | POST   | `/auth/reset-password`       | Guest  | 5 / 15 min / IP        | Redeem the reset link, set a new password      |
+| POST   | `/auth/accept-invitation`    | Guest  | 5 / 15 min / IP        | Redeem an admin invitation, set the password   |
 | GET    | `/users/me`                  | Bearer | default                | My profile, with `avatarUrl`                   |
 | PATCH  | `/users/me`                  | Bearer | default                | Change username / fullName / phone / address   |
 | PUT    | `/users/me/password`         | Bearer | 5 / 15 min / token     | Change my password, revoking every token       |
@@ -99,7 +103,7 @@ and the docs must not move when the API version does.
 | GET    | `/attachments/:id`           | Mixed  | default                | Download a file: product images are public, avatars need a token |
 | GET    | `/categories`                | Guest  | default                | List categories: `parentId` (`null` = roots), `isActive`, paging; cached |
 | GET    | `/categories/:slug`          | Guest  | default                | One category with its parent and children      |
-| GET    | `/products`                  | Guest  | default                | Search and filter published products           |
+| GET    | `/products`                  | Guest  | default                | Search and filter published products, `shop` slug filter |
 | GET    | `/products/featured`         | Guest  | default                | Featured products, best sellers first; cached  |
 | GET    | `/products/:slug`            | Guest  | default                | One published product with images              |
 | GET    | `/products/:slug/reviews`    | Guest  | default                | Reviews newest first, `rating` filter, star distribution |
@@ -112,7 +116,7 @@ and the docs must not move when the API version does.
 | PATCH  | `/cart/items/:itemId`        | Bearer | default                | Set the quantity of an item                    |
 | DELETE | `/cart/items/:itemId`        | Bearer | default                | Remove an item                                 |
 | DELETE | `/cart/items`                | Bearer | default                | Empty my cart                                  |
-| POST   | `/orders`                    | Bearer | default                | Order the whole cart: PENDING, stock taken, mail sent |
+| POST   | `/orders`                    | Bearer | default                | Order the whole cart, one order per shop: PENDING, stock taken, mail sent |
 | GET    | `/orders`                    | Bearer | default                | My orders: `status`, `from`, `to`, paging      |
 | GET    | `/orders/:code`              | Bearer | default                | One of my orders with items and history        |
 | POST   | `/orders/:code/payment`      | Bearer | default                | Declare a bank transfer (mock payment)         |
@@ -123,12 +127,28 @@ and the docs must not move when the API version does.
 | GET    | `/chat/conversations/:id/messages` | Bearer | default          | Messages newest first, `before` cursor + `limit` (default 50) |
 | POST   | `/chat/conversations/:id/messages` | Bearer | 30 / min / token | Send a message; pushed live as `message:new` |
 | POST   | `/chat/conversations/:id/read` | Bearer | default              | Mark the other side's messages as read        |
+| POST   | `/shops`                     | Bearer | default                | Apply to open a shop (PENDING); one per account, not for admins |
+| GET    | `/shops/me`                  | Bearer | default                | My shop with its review status                 |
+| PATCH  | `/shops/me`                  | Bearer | default                | Update my shop; a REJECTED shop goes back to PENDING |
+| GET    | `/shops/:slug`               | Guest  | default                | An ACTIVE shop                                 |
+| GET    | `/seller/products`           | Seller | default                | Products of my shop, any status                |
+| POST   | `/seller/products`           | Seller | default                | Add a draft product to my shop                 |
+| PATCH  | `/seller/products/:id`       | Seller | default                | Update or publish a product of my shop         |
+| DELETE | `/seller/products/:id`       | Seller | default                | Soft delete a product of my shop               |
+| POST   | `/seller/products/:id/images` | Seller | default               | Upload images of a product of my shop          |
+| DELETE | `/seller/products/:id/images/:imageId` | Seller | default      | Delete an image of a product of my shop        |
+| GET    | `/seller/orders`             | Seller | default                | Orders of my shop with the customer            |
+| GET    | `/seller/orders/:code`       | Seller | default                | One order of my shop                           |
+| PATCH  | `/seller/orders/:code/status` | Seller | default               | Confirm, ship, deliver or reject an order of my shop |
+| POST   | `/admin/admins`              | Admin  | default                | Invite an admin by email (PENDING until accepted) |
 | GET    | `/admin/users`               | Admin  | default                | List accounts: `q`, `status`, `role`, paging   |
 | GET    | `/admin/users/:id`           | Admin  | default                | One account + orders count / spent / last      |
 | PATCH  | `/admin/users/:id/status`    | Admin  | default                | Lock (`INACTIVE`) or unlock (`ACTIVE`)         |
 | GET    | `/admin/orders`              | Admin  | default                | Every order: `status`, `code` prefix, `userId`, `from`, `to`, paging |
 | GET    | `/admin/orders/:code`        | Admin  | default                | One order with its customer and who changed it |
-| PATCH  | `/admin/orders/:code/status` | Admin  | default                | Confirm, ship, deliver or reject (with a reason) |
+| PATCH  | `/admin/orders/:code/status` | Admin  | default                | Confirm, ship, deliver or reject an order of the platform |
+| GET    | `/admin/shops`               | Admin  | default                | Shop applications: `status`, `q`, paging       |
+| PATCH  | `/admin/shops/:id/status`    | Admin  | default                | Approve, or reject with a reason, once         |
 | POST   | `/admin/categories`          | Admin  | default                | Create a category (two levels at most)         |
 | PATCH  | `/admin/categories/:id`      | Admin  | default                | Rename, move or hide a category                |
 | DELETE | `/admin/categories/:id`      | Admin  | default                | Delete an empty category                       |
@@ -149,7 +169,9 @@ and the docs must not move when the API version does.
 Every route needs a bearer token unless it is marked `@Public()`: the JWT
 guard is global, so a route that forgets to declare itself is closed rather
 than open. Routes under `/admin` also carry `@Roles(UserRole.Admin)`, checked
-by a second global guard; any other account gets `403`.
+by a second global guard; any other account gets `403`. Routes under `/seller`
+carry `@SellerOnly()`: the caller must own an `ACTIVE` shop, which the guard
+puts on the request for `@CurrentShop()`; anyone else gets `403`.
 
 Lists take `limit` (1-100, default 20) and `offset` (default 0) and answer
 `{ <resource>: [...], <resource>Count }`, where the count covers every match,
@@ -293,6 +315,26 @@ otherwise) and is unique per product and account (`409`). `averageRating` and
 `reviewCount` on the product are recomputed from the reviews in the same
 transaction as every create, star change and delete.
 
+### Shops and admin accounts
+
+```bash
+curl -X POST http://localhost:3001/api/v1/admin/admins   -H "Authorization: Bearer $ADMIN_TOKEN" -H 'Content-Type: application/json'   -d '{"admin":{"email":"ops@example.com","username":"ops_lead"}}'
+curl -X POST http://localhost:3001/api/v1/shops   -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json'   -d '{"shop":{"name":"Nha Sach Ha Noi","phone":"0901234567","address":"12 Hang Bai, Ha Noi"}}'
+curl -X PATCH http://localhost:3001/api/v1/admin/shops/$SHOP_ID/status   -H "Authorization: Bearer $ADMIN_TOKEN" -H 'Content-Type: application/json'   -d '{"shop":{"status":"ACTIVE"}}'
+```
+
+There is no public way to become an admin: an admin invites one, the invitee
+gets a link valid 72 hours and sets its own password through
+`POST /auth/accept-invitation`; an expired link is replaced through
+`forgot-password`. Any customer can apply for one shop; once an admin approves
+it, the owner manages its products under `/seller/products` and confirms its
+orders under `/seller/orders`. A product or order with no shop belongs to the
+platform and stays with the admin, who can still moderate any product but
+gets `422` when changing the status of an order of a shop, unless the owner
+has been locked: the admin then takes the order over. Checkout splits the
+cart into one order per shop, each with its own code, shipping fee and mail,
+and answers `{ orders, ordersCount }`.
+
 ### Statistics and scheduled jobs
 
 ```bash
@@ -415,7 +457,8 @@ sends it. Jobs retry three times with exponential backoff. The language is
 captured from the request that queued the job, Vietnamese when there is none.
 Templates live in `src/mail/templates/`; every string they print comes from
 `src/i18n/*/mail.json`. Mails sent today: account activation, password reset,
-order placed, and order confirmed or rejected (with the reason).
+admin invitation, order placed, order confirmed or rejected (with the reason),
+and shop approved or rejected (with the reason).
 
 ## Migrations
 
@@ -528,9 +571,11 @@ src/
   auth/         register, verify, login, logout, password reset, JWT guard
   users/        profile, avatar, admin user management, one-time tokens
   categories/   category tree: public read, admin CRUD
-  products/     product search, admin CRUD, product images
+  shops/        shop applications, admin review, the seller guard
+  products/     product search, admin and seller CRUD, product images
   cart/         the shopping cart
-  orders/       checkout, order history, status machine, admin order management
+  orders/       checkout split per shop, order history, status machine, admin
+                and seller order management
   reviews/      product reviews and the rating aggregate
   chat/         customer <-> admin chat: REST history and the /chat gateway
   cache/        Redis cache with generation-based invalidation

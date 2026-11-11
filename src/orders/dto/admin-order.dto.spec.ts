@@ -4,18 +4,18 @@ import { Order } from '../entities/order.entity';
 import { OrderStatus } from '../enums/order-status.enum';
 import { PaymentMethod } from '../enums/payment-method.enum';
 import { PaymentStatus } from '../enums/payment-status.enum';
-import { OrderUser } from '../interfaces/admin-order.interface';
+import { UserRef } from '../../users/dto/user-ref.dto';
 import { toAdminOrderResponse, toAdminOrdersResponse } from './admin-order.dto';
 
 describe('admin order mappers', () => {
   const CREATED_AT = new Date('2026-10-05T03:00:00.000Z');
-  const CUSTOMER: OrderUser = {
+  const CUSTOMER: UserRef = {
     id: 'u1',
     email: 'son@example.com',
     username: 'sonlh',
     fullName: 'Lanh Hung Son',
   };
-  const ADMIN: OrderUser = {
+  const ADMIN: UserRef = {
     id: 'a1',
     email: 'admin@example.com',
     username: 'admin',
@@ -50,6 +50,7 @@ describe('admin order mappers', () => {
   it('adds the customer and who made each change', () => {
     const response = toAdminOrderResponse({
       order,
+      shop: null,
       items: [],
       history: [
         entry(OrderStatus.Pending, CUSTOMER.id),
@@ -77,6 +78,7 @@ describe('admin order mappers', () => {
       summaries: [
         {
           order,
+          shop: null,
           itemsCount: 1,
           firstItem: { productName: 'Áo thun' } as OrderItem,
           thumbnailUrl: null,
@@ -94,6 +96,7 @@ describe('admin order mappers', () => {
           paymentMethod: PaymentMethod.Cod,
           paymentStatus: PaymentStatus.Unpaid,
           total: 330000,
+          shop: null,
           createdAt: CREATED_AT.toISOString(),
           itemsCount: 1,
           firstItemName: 'Áo thun',

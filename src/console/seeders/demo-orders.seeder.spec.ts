@@ -82,9 +82,9 @@ describe('DemoOrdersSeeder', () => {
     ordersMock.checkout.mockImplementation(() => {
       sequence += 1;
 
-      return Promise.resolve({
-        order: { id: `order-${sequence}`, code: `ORD-${sequence}` },
-      });
+      return Promise.resolve([
+        { order: { id: `order-${sequence}`, code: `ORD-${sequence}` } },
+      ]);
     });
     ordersMock.pay.mockImplementation((_user, code: string) =>
       Promise.resolve({ order: { id: code, code } }),

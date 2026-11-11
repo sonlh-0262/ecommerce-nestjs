@@ -30,13 +30,14 @@ export class ProductImagesService {
     productId: string,
     uploads: UploadedImage[] | undefined,
     makeThumbnail = false,
+    shopId?: string,
   ): Promise<ProductImage[]> {
     const images = (uploads?.length ? uploads : [undefined]).map((upload) =>
       this.attachments.validate(upload),
     );
 
     const all = await this.dataSource.transaction(async (manager) => {
-      await this.productsService.lock(manager, productId);
+      await this.productsService.lock(manager, productId, shopId);
 
       const existing = await this.imagesOf(manager, productId);
 
@@ -86,9 +87,17 @@ export class ProductImagesService {
     return all;
   }
 
-  async remove(productId: string, imageId: string): Promise<void> {
+  async remove(
+    productId: string,
+    imageId: string,
+    shopId?: string,
+  ): Promise<void> {
     await this.dataSource.transaction(async (manager) => {
-      const product = await this.productsService.lock(manager, productId);
+      const product = await this.productsService.lock(
+        manager,
+        productId,
+        shopId,
+      );
       const images = await this.imagesOf(manager, productId);
       const image = images.find(({ id }) => id === imageId);
 

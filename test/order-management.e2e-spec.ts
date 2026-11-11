@@ -107,6 +107,7 @@ describe('Order management (e2e)', () => {
         paymentMethod: PaymentMethod.Cod,
         paymentStatus: PaymentStatus.Unpaid,
         total: first.total,
+        shop: null,
         createdAt: first.createdAt,
         itemsCount: 1,
         firstItemName: product.name,

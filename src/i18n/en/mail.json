@@ -15,6 +15,12 @@
     "ACTION": "Reset password",
     "EXPIRY": "This link expires in {duration} and can be used once."
   },
+  "ADMIN_INVITATION": {
+    "SUBJECT": "You have been invited to become an administrator",
+    "INTRO": "An administrator has created an admin account for you. Set your password to activate it.",
+    "ACTION": "Set password",
+    "EXPIRY": "This link expires in {duration} and can be used once."
+  },
   "ORDER_CREATED": {
     "SUBJECT": "Order {code} has been placed",
     "INTRO": "Thank you for your order. We have received order {code} and will confirm it shortly.",
@@ -55,5 +61,16 @@
     "SOLD_QUANTITY": "Sold",
     "PRODUCT_REVENUE": "Revenue",
     "NO_SALES": "No order was delivered this month."
+  },
+  "SHOP_REVIEWED": {
+    "ACTIVE": {
+      "SUBJECT": "Your shop {name} has been approved",
+      "INTRO": "Good news: your shop {name} has been approved. You can now add products and receive orders."
+    },
+    "REJECTED": {
+      "SUBJECT": "Your shop {name} was not approved",
+      "INTRO": "We are sorry, your application for the shop {name} was not approved. Update your shop details to send it for review again."
+    },
+    "REASON": "Reason"
   }
 }

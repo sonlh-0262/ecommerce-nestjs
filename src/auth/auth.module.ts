@@ -7,6 +7,7 @@ import { AuthConfig, AUTH_CONFIG_KEY } from '../config/auth.config';
 import { MailModule } from '../mail/mail.module';
 import { UsersModule } from '../users/users.module';
 import { AccountLinksService } from './account-links.service';
+import { AdminInvitationsController } from './admin-invitations.controller';
 import { JWT_STRATEGY_NAME } from './auth.constants';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
@@ -37,7 +38,7 @@ import { TokenBlacklistService } from './token-blacklist.service';
       },
     }),
   ],
-  controllers: [AuthController],
+  controllers: [AuthController, AdminInvitationsController],
   providers: [
     AuthService,
     JwtStrategy,

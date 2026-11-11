@@ -1,0 +1,7 @@
+{
+  "NOT_FOUND": "Không tìm thấy shop",
+  "ALREADY_OWNS_SHOP": "Bạn đã có shop",
+  "ALREADY_REVIEWED": "Shop này đã được duyệt trước đó",
+  "REASON_REQUIRED": "Cần lý do dài ít nhất {min} ký tự khi từ chối shop",
+  "SHOP_REQUIRED": "Bạn cần có shop đã được duyệt để thực hiện thao tác này"
+}

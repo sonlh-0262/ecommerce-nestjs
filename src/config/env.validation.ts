@@ -81,7 +81,17 @@ export interface EnvironmentVariables {
 
   SEED_ADMIN_EMAIL?: string;
   SEED_ADMIN_PASSWORD?: string;
+
+  BULL_BOARD_ENABLED?: string;
+  BULL_BOARD_USERNAME?: string;
+  BULL_BOARD_PASSWORD?: string;
 }
+
+const requiredWhenBullBoardEnabled = Joi.string().when('BULL_BOARD_ENABLED', {
+  is: 'true',
+  then: Joi.required(),
+  otherwise: Joi.optional(),
+});
 
 const requiredInProduction = <T extends Joi.Schema>(schema: T): T =>
   schema.when('NODE_ENV', {
@@ -181,4 +191,8 @@ export const envValidationSchema = Joi.object<EnvironmentVariables>({
     .pattern(PASSWORD_STRENGTH_PATTERN)
     .allow('')
     .optional(),
+
+  BULL_BOARD_ENABLED: Joi.string().valid('true', 'false').optional(),
+  BULL_BOARD_USERNAME: requiredWhenBullBoardEnabled,
+  BULL_BOARD_PASSWORD: requiredWhenBullBoardEnabled,
 }).unknown(true);

@@ -7,6 +7,7 @@ import { CacheService } from '../cache/cache.service';
 import { Category } from '../categories/entities/category.entity';
 import { CACHE_RESOURCES } from '../common/constants/cache-keys';
 import { paginated } from '../common/helpers/paginated';
+import { ShopsViewService, shopIn } from '../shops/shops-view.service';
 import { AdminProductsQueryDto } from './dto/admin-products-query.dto';
 import {
   ProductResponseDto,
@@ -19,6 +20,7 @@ import {
   FeaturedProductsQueryDto,
   ProductsQueryDto,
 } from './dto/products-query.dto';
+import { SellerProductsQueryDto } from './dto/seller-product.dto';
 import { ProductImage } from './entities/product-image.entity';
 import { Product } from './entities/product.entity';
 import { ProductStatus } from './enums/product-status.enum';
@@ -40,6 +42,7 @@ export class ProductsViewService {
     @InjectRepository(Category)
     private readonly categoriesRepository: Repository<Category>,
     private readonly thumbnails: ProductThumbnailsService,
+    private readonly shops: ShopsViewService,
     private readonly cache: CacheService,
     private readonly i18n: I18nService,
   ) {}
@@ -55,20 +58,21 @@ export class ProductsViewService {
   }
 
   adminList(query: AdminProductsQueryDto): Promise<ProductsResponseDto> {
-    const builder = this.productsRepository.createQueryBuilder(PRODUCT_ALIAS);
+    return this.managedList(
+      this.productsRepository.createQueryBuilder(PRODUCT_ALIAS),
+      query,
+    );
+  }
 
-    if (query.includeDeleted) {
-      builder.withDeleted();
-    }
-
-    if (query.status) {
-      builder.andWhere('product.status = :status', { status: query.status });
-    }
-
-    return this.page(
-      sortProducts(filterProducts(builder, query), query.sort, query.q),
-      query.limit,
-      query.offset,
+  shopList(
+    shopId: string,
+    query: SellerProductsQueryDto,
+  ): Promise<ProductsResponseDto> {
+    return this.managedList(
+      this.productsRepository
+        .createQueryBuilder(PRODUCT_ALIAS)
+        .where('product.shopId = :shopId', { shopId }),
+      query,
     );
   }
 
@@ -103,7 +107,7 @@ export class ProductsViewService {
   }
 
   async toResponse(product: Product): Promise<ProductResponseDto> {
-    const [category, images] = await Promise.all([
+    const [category, images, shops] = await Promise.all([
       this.categoriesRepository.findOneOrFail({
         where: { id: product.categoryId },
         relations: { parent: true },
@@ -113,9 +117,34 @@ export class ProductsViewService {
         relations: { attachment: true },
         order: { position: 'ASC' },
       }),
+      this.shops.byIds([product.shopId]),
     ]);
 
-    return toProductResponse(product, category, images);
+    return toProductResponse(
+      product,
+      category,
+      images,
+      shopIn(shops, product.shopId),
+    );
+  }
+
+  private managedList(
+    builder: SelectQueryBuilder<Product>,
+    query: AdminProductsQueryDto,
+  ): Promise<ProductsResponseDto> {
+    if (query.includeDeleted) {
+      builder.withDeleted();
+    }
+
+    if (query.status) {
+      builder.andWhere('product.status = :status', { status: query.status });
+    }
+
+    return this.page(
+      sortProducts(filterProducts(builder, query), query.sort, query.q),
+      query.limit,
+      query.offset,
+    );
   }
 
   private async page(
@@ -145,10 +174,10 @@ export class ProductsViewService {
     }
 
     const categoryIds = [...new Set(products.map((p) => p.categoryId))];
-
-    const [thumbnailUrls, categories] = await Promise.all([
+    const [thumbnailUrls, categories, shops] = await Promise.all([
       this.thumbnails.urlsOf(products.map(({ id }) => id)),
       this.categoriesRepository.findBy({ id: In(categoryIds) }),
+      this.shops.byIds(products.map(({ shopId }) => shopId)),
     ]);
 
     const categoriesById = new Map(categories.map((c) => [c.id, c]));
@@ -158,6 +187,7 @@ export class ProductsViewService {
         product,
         categoriesById.get(product.categoryId) as Category,
         thumbnailUrls.get(product.id) ?? null,
+        shopIn(shops, product.shopId),
       ),
     );
   }

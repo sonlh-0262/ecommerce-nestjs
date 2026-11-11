@@ -45,7 +45,7 @@ export class ProductsService {
     return this.productsRepository.findOneBy({ slug });
   }
 
-  async create(input: CreateProductBodyDto): Promise<Product> {
+  async create(input: CreateProductBodyDto, shopId?: string): Promise<Product> {
     const status = input.status ?? ProductStatus.Draft;
     const salePrice = input.salePrice ?? null;
 
@@ -72,6 +72,7 @@ export class ProductsService {
           return repository.save(
             repository.create({
               ...input,
+              shopId: shopId ?? null,
               slug,
               description: input.description ?? null,
               salePrice,
@@ -88,11 +89,15 @@ export class ProductsService {
     return product;
   }
 
-  async update(id: string, input: UpdateProductBodyDto): Promise<Product> {
+  async update(
+    id: string,
+    input: UpdateProductBodyDto,
+    shopId?: string,
+  ): Promise<Product> {
     const patch = definedFields(input);
 
     const product = await this.dataSource.transaction(async (manager) => {
-      const current = await this.lock(manager, id);
+      const current = await this.lock(manager, id, shopId);
 
       if (
         patch.categoryId !== undefined &&
@@ -125,9 +130,9 @@ export class ProductsService {
     return product;
   }
 
-  async remove(id: string): Promise<void> {
+  async remove(id: string, shopId?: string): Promise<void> {
     await this.dataSource.transaction(async (manager) => {
-      await this.lock(manager, id);
+      await this.lock(manager, id, shopId);
       await manager.update(
         Product,
         { id },
@@ -140,9 +145,13 @@ export class ProductsService {
     this.logger.log(`Archived product ${id}`);
   }
 
-  async lock(manager: EntityManager, id: string): Promise<Product> {
+  async lock(
+    manager: EntityManager,
+    id: string,
+    shopId?: string,
+  ): Promise<Product> {
     const product = await manager.findOne(Product, {
-      where: { id },
+      where: shopId === undefined ? { id } : { id, shopId },
       lock: { mode: 'pessimistic_write' },
     });
 

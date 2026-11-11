@@ -5,6 +5,7 @@ import {
 
 import { transactionalDataSource } from '../database/transaction.fixture';
 import { buildUser } from '../users/entities/user.fixture';
+import { UserRole } from '../users/enums/user-role.enum';
 import { UserStatus } from '../users/enums/user-status.enum';
 import { UserTokenType } from '../users/enums/user-token-type.enum';
 import { PasswordService } from '../users/password.service';
@@ -45,6 +46,7 @@ describe('RegistrationService', () => {
       linksMock as unknown as AccountLinksService,
     );
 
+    usersMock.assertAvailable.mockResolvedValue(undefined);
     passwordMock.hash.mockResolvedValue(HASH);
     tokensMock.issue.mockResolvedValue(TOKEN);
     usersMock.update.mockImplementation((user: object, patch: object) =>
@@ -131,6 +133,82 @@ describe('RegistrationService', () => {
       );
 
       await expect(service.register(input)).rejects.toThrow(ConflictException);
+      expect(linksMock.send).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('inviteAdmin', () => {
+    const admin = buildUser({ id: 'admin-1', role: UserRole.Admin });
+    const invitation = {
+      email: 'ops@example.com',
+      username: 'ops_lead',
+      fullName: 'Ops Lead',
+    };
+    const invited = buildUser({
+      role: UserRole.Admin,
+      status: UserStatus.Pending,
+      emailVerifiedAt: null,
+    });
+
+    beforeEach(() => {
+      usersMock.create.mockResolvedValue(invited);
+    });
+
+    it('creates a pending admin with an invitation token in one transaction', async () => {
+      await expect(service.inviteAdmin(admin, invitation)).resolves.toBe(
+        invited,
+      );
+
+      expect(usersMock.create).toHaveBeenCalledWith(
+        {
+          ...invitation,
+          passwordHash: HASH,
+          role: UserRole.Admin,
+        },
+        manager,
+      );
+      expect(tokensMock.issue).toHaveBeenCalledWith(
+        manager,
+        invited.id,
+        UserTokenType.Invitation,
+      );
+    });
+
+    it('hashes a random password nobody knows', async () => {
+      await service.inviteAdmin(admin, invitation);
+      await service.inviteAdmin(admin, invitation);
+
+      const [[first], [second]] = passwordMock.hash.mock.calls as [
+        [string],
+        [string],
+      ];
+
+      expect(first).toMatch(/^[0-9a-f]{64}$/);
+      expect(first).not.toBe(second);
+    });
+
+    it('emails the invitation link only after the transaction', async () => {
+      await service.inviteAdmin(admin, invitation);
+
+      expect(linksMock.send).toHaveBeenCalledWith(
+        invited,
+        UserTokenType.Invitation,
+        TOKEN,
+      );
+      expect(transaction.mock.invocationCallOrder[0]).toBeLessThan(
+        linksMock.send.mock.invocationCallOrder[0],
+      );
+    });
+
+    it('creates nothing when the email or username is taken', async () => {
+      usersMock.assertAvailable.mockRejectedValue(
+        new ConflictException('users.USERNAME_TAKEN'),
+      );
+
+      await expect(service.inviteAdmin(admin, invitation)).rejects.toThrow(
+        ConflictException,
+      );
+      expect(usersMock.create).not.toHaveBeenCalled();
       expect(linksMock.send).not.toHaveBeenCalled();
     });
   });

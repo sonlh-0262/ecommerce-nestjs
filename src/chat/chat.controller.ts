@@ -11,6 +11,7 @@ import {
 import {
   ApiBearerAuth,
   ApiCreatedResponse,
+  ApiExcludeController,
   ApiOkResponse,
   ApiOperation,
   ApiParam,
@@ -44,6 +45,7 @@ import {
 import { MessagesQueryDto } from './dto/messages-query.dto';
 import { SendMessageDto } from './dto/send-message.dto';
 
+@ApiExcludeController()
 @ApiTags('Chat')
 @ApiBearerAuth(SWAGGER_BEARER_AUTH_NAME)
 @ApiErrorResponse(HttpStatus.UNAUTHORIZED, 'Missing, invalid or revoked token.')

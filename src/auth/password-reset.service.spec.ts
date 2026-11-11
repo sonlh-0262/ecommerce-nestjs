@@ -2,6 +2,7 @@ import { Logger, UnprocessableEntityException } from '@nestjs/common';
 
 import { transactionalDataSource } from '../database/transaction.fixture';
 import { buildUser } from '../users/entities/user.fixture';
+import { UserRole } from '../users/enums/user-role.enum';
 import { UserStatus } from '../users/enums/user-status.enum';
 import { UserTokenType } from '../users/enums/user-token-type.enum';
 import { UserPatch } from '../users/interfaces/user-patch.interface';
@@ -130,6 +131,43 @@ describe('PasswordResetService', () => {
       await expect(service.resetPassword(TOKEN, NEW_PASSWORD)).rejects.toThrow(
         UnprocessableEntityException,
       );
+      expect(usersMock.update).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('acceptInvitation', () => {
+    it('redeems an invitation token, sets the password and activates', async () => {
+      tokensMock.consume.mockResolvedValue(
+        buildUser({
+          role: UserRole.Admin,
+          status: UserStatus.Pending,
+          emailVerifiedAt: null,
+        }),
+      );
+
+      await service.acceptInvitation(TOKEN, NEW_PASSWORD);
+
+      expect(tokensMock.consume).toHaveBeenCalledWith(
+        manager,
+        TOKEN,
+        UserTokenType.Invitation,
+      );
+      expect(appliedPatch()).toEqual({
+        status: UserStatus.Active,
+        emailVerifiedAt: NOW,
+        passwordHash: NEW_HASH,
+        passwordChangedAt: NOW,
+      });
+    });
+
+    it('changes nothing for a token of another kind', async () => {
+      tokensMock.consume.mockRejectedValue(
+        new UnprocessableEntityException('auth.INVALID_TOKEN'),
+      );
+
+      await expect(
+        service.acceptInvitation(TOKEN, NEW_PASSWORD),
+      ).rejects.toThrow(UnprocessableEntityException);
       expect(usersMock.update).not.toHaveBeenCalled();
     });
   });

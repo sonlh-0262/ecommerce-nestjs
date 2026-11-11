@@ -1,6 +1,7 @@
 import { SelectQueryBuilder } from 'typeorm';
 
 import { Category } from '../categories/entities/category.entity';
+import { Shop } from '../shops/entities/shop.entity';
 import { Product } from './entities/product.entity';
 import { ProductSort } from './products.constants';
 
@@ -21,6 +22,7 @@ const SORT_ORDERS: Record<ProductSort, [string, 'ASC' | 'DESC']> = {
 export interface ProductFilters {
   q?: string | null;
   category?: string;
+  shop?: string;
   minPrice?: number;
   maxPrice?: number;
   minRating?: number;
@@ -50,6 +52,17 @@ export function filterProducts(
     builder.andWhere(`product.categoryId IN ${categoryIds}`, {
       category: filters.category,
     });
+  }
+
+  if (filters.shop) {
+    const shopIds = builder
+      .subQuery()
+      .select('filterShop.id')
+      .from(Shop, 'filterShop')
+      .where('filterShop.slug = :shop')
+      .getQuery();
+
+    builder.andWhere(`product.shopId IN ${shopIds}`, { shop: filters.shop });
   }
 
   if (filters.minPrice !== undefined) {

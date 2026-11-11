@@ -32,13 +32,14 @@ export class AccountLinksService {
   }
 
   send(user: User, type: UserTokenType, token: string): Promise<void> {
-    const { job, path } = ACCOUNT_LINKS[type];
+    const { job, path, lang } = ACCOUNT_LINKS[type];
 
     return this.mailQueue.enqueue(job, {
       to: user.email,
       fullName: user.fullName,
       expiresInMinutes: USER_TOKEN_TTL_MINUTES[type],
       actionUrl: `${this.webUrl}${path}?${new URLSearchParams({ token }).toString()}`,
+      lang,
     });
   }
 }

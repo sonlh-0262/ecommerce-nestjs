@@ -21,5 +21,7 @@
   "AT_LEAST_ONE_FIELD": "{property} phải có ít nhất một trường",
   "IS_IN": "{property} phải là một trong các giá trị: {constraints.0}",
   "IS_DATE": "{property} phải là ngày theo định dạng ISO 8601",
-  "IS_URL": "{property} phải là một địa chỉ http hoặc https"
+  "IS_URL": "{property} phải là một địa chỉ http hoặc https",
+  "CARD_NUMBER": "{property} phải là số thẻ hợp lệ",
+  "CVC_FORMAT": "{property} phải gồm 3 hoặc 4 chữ số"
 }

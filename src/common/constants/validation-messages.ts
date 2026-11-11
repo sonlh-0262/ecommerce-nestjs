@@ -21,4 +21,6 @@ export const VALIDATION_MESSAGES = {
   maxLength: translated('MAX_LENGTH'),
   atLeastOneField: translated('AT_LEAST_ONE_FIELD'),
   phoneFormat: translated('PHONE_FORMAT'),
+  cardNumber: translated('CARD_NUMBER'),
+  cvcFormat: translated('CVC_FORMAT'),
 } as const;

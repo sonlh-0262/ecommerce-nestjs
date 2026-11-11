@@ -30,6 +30,7 @@ import { PaymentStatus } from './enums/payment-status.enum';
 import { OrderDetail } from './interfaces/order-detail.interface';
 import { UnavailableItem } from './interfaces/unavailable-item.interface';
 import { OrderCodeService } from './order-code.service';
+import { findOwnedOrderForUpdate } from './order-locks';
 import {
   OrderLine,
   PricedOrder,
@@ -290,10 +291,7 @@ export class OrdersService {
     userId: string,
     code: string,
   ): Promise<Order> {
-    const order = await manager.findOne(Order, {
-      where: { code, userId },
-      lock: { mode: 'pessimistic_write' },
-    });
+    const order = await findOwnedOrderForUpdate(manager, userId, code);
 
     if (!order) {
       throw new NotFoundException(this.i18n.t('orders.NOT_FOUND'));

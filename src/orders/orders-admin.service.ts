@@ -57,6 +57,12 @@ export class OrdersAdminService {
         );
       }
 
+      if (awaitsCardPayment(order, status)) {
+        throw new UnprocessableEntityException(
+          this.i18n.t('orders.AWAITING_PAYMENT'),
+        );
+      }
+
       if (requiresReason(status) && !reason) {
         throw new UnprocessableEntityException(
           this.i18n.t('orders.REASON_REQUIRED', {
@@ -150,4 +156,12 @@ export class OrdersAdminService {
       where: { id: shopId, owner: { status: UserStatus.Active } },
     });
   }
+}
+
+function awaitsCardPayment(order: Order, to: OrderStatus): boolean {
+  return (
+    to === OrderStatus.Confirmed &&
+    order.paymentMethod === PaymentMethod.Card &&
+    order.paymentStatus !== PaymentStatus.Paid
+  );
 }

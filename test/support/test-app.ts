@@ -8,7 +8,7 @@ import { DataSource } from 'typeorm';
 import { AppModule } from '../../src/app.module';
 import { AuthService } from '../../src/auth/auth.service';
 import { Category } from '../../src/categories/entities/category.entity';
-import { configureApp } from '../../src/config/app-setup';
+import { APP_FACTORY_OPTIONS, configureApp } from '../../src/config/app-setup';
 import { APP_CONFIG_KEY, AppConfig } from '../../src/config/configuration';
 import {
   DATABASE_CONFIG_KEY,
@@ -58,7 +58,10 @@ export async function createTestApp(
     .useValue(mail)
     .compile();
 
-  const app = moduleFixture.createNestApplication<INestApplication<App>>();
+  const app =
+    moduleFixture.createNestApplication<INestApplication<App>>(
+      APP_FACTORY_OPTIONS,
+    );
   const config = app.get(ConfigService);
 
   const redisConfig = config.getOrThrow<RedisConfig>(REDIS_CONFIG_KEY);

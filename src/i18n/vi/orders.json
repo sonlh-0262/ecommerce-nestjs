@@ -8,5 +8,6 @@
   "CODE_SEQUENCE_EXHAUSTED": "Hôm nay có quá nhiều đơn hàng, vui lòng thử lại sau",
   "INVALID_TRANSITION": "Không thể chuyển đơn hàng từ {from} sang {to}",
   "REASON_REQUIRED": "Cần nhập lý do dài ít nhất {min} ký tự để từ chối đơn hàng",
-  "MANAGED_BY_SHOP": "Đơn hàng thuộc về một shop, chỉ shop đó mới được đổi trạng thái"
+  "MANAGED_BY_SHOP": "Đơn hàng thuộc về một shop, chỉ shop đó mới được đổi trạng thái",
+  "AWAITING_PAYMENT": "Đơn thanh toán bằng thẻ chỉ được xác nhận sau khi đã thanh toán"
 }

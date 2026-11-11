@@ -212,6 +212,52 @@ describe('OrdersAdminService', () => {
     },
   );
 
+  describe('card orders', () => {
+    it.each([PaymentStatus.Unpaid, PaymentStatus.Refunded])(
+      'refuses to confirm a %s card order',
+      async (paymentStatus) => {
+        managerMock.findOne.mockResolvedValue(
+          order({ paymentMethod: PaymentMethod.Card, paymentStatus }),
+        );
+
+        await expect(
+          service.changeStatus(ADMIN, CODE, { status: OrderStatus.Confirmed }),
+        ).rejects.toThrow(
+          new UnprocessableEntityException('orders.AWAITING_PAYMENT'),
+        );
+        expect(transitionsMock.apply).not.toHaveBeenCalled();
+      },
+    );
+
+    it('confirms a paid card order', async () => {
+      managerMock.findOne.mockResolvedValue(
+        order({
+          paymentMethod: PaymentMethod.Card,
+          paymentStatus: PaymentStatus.Paid,
+        }),
+      );
+
+      await service.changeStatus(ADMIN, CODE, {
+        status: OrderStatus.Confirmed,
+      });
+
+      expect(changeOf()).toMatchObject({ to: OrderStatus.Confirmed });
+    });
+
+    it('still lets an unpaid card order be rejected', async () => {
+      managerMock.findOne.mockResolvedValue(
+        order({ paymentMethod: PaymentMethod.Card }),
+      );
+
+      await service.changeStatus(ADMIN, CODE, {
+        status: OrderStatus.Rejected,
+        reason: REASON,
+      });
+
+      expect(changeOf()).toMatchObject({ to: OrderStatus.Rejected });
+    });
+  });
+
   it('rejects with the reason on the order and in the history', async () => {
     managerMock.findOne.mockResolvedValue(order());
 

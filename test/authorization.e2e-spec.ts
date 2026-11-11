@@ -44,6 +44,7 @@ import {
   HEALTH_PATH,
   MY_SHOP_PATH,
   ORDERS_PATH,
+  PAYMENT_WEBHOOK_PATHS,
   PRODUCTS_PATH,
   PROFILE_PATHS,
   REVIEWS_PATH,
@@ -52,13 +53,17 @@ import {
   SELLER_PRODUCTS_PATH,
   SHOPS_PATH,
   SUGGESTIONS_PATH,
+  TEST_CARDS,
+  TEST_CARD_EXPIRY,
   TEST_RECEIVER,
   TEST_SHOP,
   TEST_SUGGESTION,
   conversationMessagesPath,
   conversationReadPath,
+  orderPaymentsPath,
   productReviewsPath,
   productSharePath,
+  simulatorPath,
 } from './support/test.constants';
 
 type Actor = 'guest' | 'user' | 'admin';
@@ -160,6 +165,19 @@ class Fixtures {
         this.accounts[account],
         [[await this.product('order'), 1]],
         PaymentMethod.BankTransfer,
+      );
+
+      return order.code;
+    });
+  }
+
+  cardOrder(account: Account): Promise<string> {
+    return this.once(`card-order:${account}`, async () => {
+      const order = await placeOrder(
+        this.ctx,
+        this.accounts[account],
+        [[await this.product('card-order'), 1]],
+        PaymentMethod.Card,
       );
 
       return order.code;
@@ -325,6 +343,45 @@ const PUBLIC_ROUTES: RouteCase[] = [
     route: `GET ${SHOPS_PATH}/:slug`,
     expected: open(),
     build: async (fx) => ({ path: `${SHOPS_PATH}/${(await fx.shop()).slug}` }),
+  },
+  {
+    route: `POST ${PAYMENT_WEBHOOK_PATHS.mock}`,
+    expected: open(400),
+    build: at(PAYMENT_WEBHOOK_PATHS.mock),
+  },
+  {
+    route: `POST ${PAYMENT_WEBHOOK_PATHS.stripe}`,
+    expected: open(404),
+    build: at(PAYMENT_WEBHOOK_PATHS.stripe),
+  },
+  {
+    route: `POST ${API_BASE_PATH}/payment-simulator/intents/:id/confirm`,
+    expected: open(404),
+    build: () =>
+      Promise.resolve({
+        path: simulatorPath('mock_pi_unknown', 'confirm'),
+        body: {
+          confirmation: {
+            clientSecret: 'mock_pi_unknown_secret_x',
+            cardNumber: TEST_CARDS.success,
+            ...TEST_CARD_EXPIRY,
+          },
+        },
+      }),
+  },
+  {
+    route: `POST ${API_BASE_PATH}/payment-simulator/intents/:id/authenticate`,
+    expected: open(404),
+    build: () =>
+      Promise.resolve({
+        path: simulatorPath('mock_pi_unknown', 'authenticate'),
+        body: {
+          authentication: {
+            clientSecret: 'mock_pi_unknown_secret_x',
+            approve: true,
+          },
+        },
+      }),
   },
 ];
 
@@ -519,6 +576,20 @@ const SIGNED_IN_ROUTES: RouteCase[] = [
     expected: signedIn(),
     build: async (fx, account) => ({
       path: `${ORDERS_PATH}/${await fx.pendingOrder(account)}/cancel`,
+    }),
+  },
+  {
+    route: `POST ${ORDERS_PATH}/:code/payments`,
+    expected: signedIn(201),
+    build: async (fx, account) => ({
+      path: orderPaymentsPath(await fx.cardOrder(account)),
+    }),
+  },
+  {
+    route: `GET ${ORDERS_PATH}/:code/payments`,
+    expected: signedIn(),
+    build: async (fx, account) => ({
+      path: orderPaymentsPath(await fx.cardOrder(account)),
     }),
   },
   {

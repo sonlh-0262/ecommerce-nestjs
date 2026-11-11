@@ -7,6 +7,7 @@ import {
   ScheduledJobName,
 } from '../../common/constants/scheduled-jobs';
 import { OrdersScheduler } from '../../orders/orders.scheduler';
+import { PaymentsScheduler } from '../../payments/payments.scheduler';
 import { MonthlyReportScheduler } from '../../stats/monthly-report.scheduler';
 
 const JOB_NAMES = Object.values(SCHEDULED_JOBS);
@@ -20,13 +21,18 @@ export class RunJobCommand extends CommandRunner {
   private readonly logger = new Logger(RunJobCommand.name);
   private readonly jobs: Record<ScheduledJobName, () => Promise<boolean>>;
 
-  constructor(orders: OrdersScheduler, reports: MonthlyReportScheduler) {
+  constructor(
+    orders: OrdersScheduler,
+    reports: MonthlyReportScheduler,
+    payments: PaymentsScheduler,
+  ) {
     super();
 
     this.jobs = {
       [SCHEDULED_JOBS.MonthlyRevenueReport]: () =>
         reports.sendLastMonthReport(),
       [SCHEDULED_JOBS.OrdersAutoCancel]: () => orders.cancelExpiredOrders(),
+      [SCHEDULED_JOBS.PaymentRefundsRetry]: () => payments.retryStaleRefunds(),
     };
   }
 

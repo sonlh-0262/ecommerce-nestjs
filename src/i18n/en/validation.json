@@ -21,5 +21,7 @@
   "AT_LEAST_ONE_FIELD": "{property} must contain at least one field",
   "IS_IN": "{property} must be one of: {constraints.0}",
   "IS_DATE": "{property} must be an ISO 8601 date",
-  "IS_URL": "{property} must be an http or https URL"
+  "IS_URL": "{property} must be an http or https URL",
+  "CARD_NUMBER": "{property} must be a valid card number",
+  "CVC_FORMAT": "{property} must be 3 or 4 digits"
 }

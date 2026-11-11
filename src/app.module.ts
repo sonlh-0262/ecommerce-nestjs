@@ -39,6 +39,7 @@ import { envFilePaths } from './config/env-files';
 import { envValidationSchema } from './config/env.validation';
 import mailConfig from './config/mail.config';
 import ordersConfig from './config/orders.config';
+import paymentsConfig from './config/payments.config';
 import redisConfig, {
   REDIS_CONFIG_KEY,
   RedisConfig,
@@ -54,6 +55,7 @@ import { DatabaseModule } from './database/database.module';
 import { HealthModule } from './health/health.module';
 import { MailModule } from './mail/mail.module';
 import { OrdersModule } from './orders/orders.module';
+import { PaymentsModule } from './payments/payments.module';
 import { ProductSuggestionsModule } from './product-suggestions/product-suggestions.module';
 import { ProductsModule } from './products/products.module';
 import { QUEUE_BOARD_ENABLED_ENV } from './queue-board/queue-board.constants';
@@ -80,6 +82,7 @@ import { UsersModule } from './users/users.module';
         storageConfig,
         seedConfig,
         ordersConfig,
+        paymentsConfig,
         bullBoardConfig,
       ],
       validationSchema: envValidationSchema,
@@ -146,6 +149,7 @@ import { UsersModule } from './users/users.module';
     ProductsModule,
     CartModule,
     OrdersModule,
+    PaymentsModule,
     ReviewsModule,
     StatsModule,
     ProductSuggestionsModule,

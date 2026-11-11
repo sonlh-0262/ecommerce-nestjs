@@ -21,7 +21,12 @@ import {
   MIN_REDIS_DB_INDEX,
   MIN_SHIPPING_FEE,
   MIN_THROTTLE_VALUE,
+  MIN_WEBHOOK_SECRET_LENGTH,
+  MOCK_PAYMENT_PROVIDER,
   NO_TRAILING_SLASH_PATTERN,
+  STRIPE_PAYMENT_PROVIDER,
+  STRIPE_SECRET_KEY_PATTERN,
+  STRIPE_WEBHOOK_SECRET_PATTERN,
   WEB_URL_SCHEMES,
 } from './config.constants';
 
@@ -79,6 +84,12 @@ export interface EnvironmentVariables {
   SHIPPING_FEE?: number;
   ORDER_AUTO_CANCEL_DAYS?: number;
 
+  PAYMENT_PROVIDER?: string;
+  MOCK_PAYMENT_WEBHOOK_SECRET?: string;
+  STRIPE_SECRET_KEY?: string;
+  STRIPE_WEBHOOK_SECRET?: string;
+  STRIPE_API_URL?: string;
+
   SEED_ADMIN_EMAIL?: string;
   SEED_ADMIN_PASSWORD?: string;
 
@@ -97,6 +108,13 @@ const requiredInProduction = <T extends Joi.Schema>(schema: T): T =>
   schema.when('NODE_ENV', {
     is: Environment.Production,
     then: Joi.required(),
+    otherwise: Joi.optional(),
+  }) as T;
+
+const requiredForStripe = <T extends Joi.Schema>(schema: T): T =>
+  schema.when('PAYMENT_PROVIDER', {
+    is: STRIPE_PAYMENT_PROVIDER,
+    then: Joi.required().invalid(''),
     otherwise: Joi.optional(),
   }) as T;
 
@@ -182,6 +200,27 @@ export const envValidationSchema = Joi.object<EnvironmentVariables>({
   ORDER_AUTO_CANCEL_DAYS: Joi.number()
     .integer()
     .min(MIN_ORDER_AUTO_CANCEL_DAYS)
+    .optional(),
+
+  PAYMENT_PROVIDER: Joi.string()
+    .valid(MOCK_PAYMENT_PROVIDER, STRIPE_PAYMENT_PROVIDER)
+    .when('NODE_ENV', {
+      is: Environment.Production,
+      then: Joi.required().invalid(MOCK_PAYMENT_PROVIDER),
+      otherwise: Joi.optional(),
+    }),
+  MOCK_PAYMENT_WEBHOOK_SECRET: Joi.string()
+    .min(MIN_WEBHOOK_SECRET_LENGTH)
+    .optional(),
+  STRIPE_SECRET_KEY: requiredForStripe(
+    Joi.string().pattern(STRIPE_SECRET_KEY_PATTERN).allow(''),
+  ),
+  STRIPE_WEBHOOK_SECRET: requiredForStripe(
+    Joi.string().pattern(STRIPE_WEBHOOK_SECRET_PATTERN).allow(''),
+  ),
+  STRIPE_API_URL: Joi.string()
+    .uri({ scheme: WEB_URL_SCHEMES })
+    .allow('')
     .optional(),
 
   SEED_ADMIN_EMAIL: Joi.string().email(EMAIL_OPTIONS).allow('').optional(),

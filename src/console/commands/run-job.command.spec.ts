@@ -2,6 +2,7 @@ import { Logger } from '@nestjs/common';
 
 import { SCHEDULED_JOBS } from '../../common/constants/scheduled-jobs';
 import { OrdersScheduler } from '../../orders/orders.scheduler';
+import { PaymentsScheduler } from '../../payments/payments.scheduler';
 import { MonthlyReportScheduler } from '../../stats/monthly-report.scheduler';
 import { RunJobCommand } from './run-job.command';
 
@@ -10,10 +11,12 @@ describe('RunJobCommand', () => {
   const reportsMock = {
     sendLastMonthReport: jest.fn().mockResolvedValue(true),
   };
+  const paymentsMock = { retryStaleRefunds: jest.fn().mockResolvedValue(true) };
 
   const command = new RunJobCommand(
     ordersMock as unknown as OrdersScheduler,
     reportsMock as unknown as MonthlyReportScheduler,
+    paymentsMock as unknown as PaymentsScheduler,
   );
 
   let log: jest.SpyInstance;
@@ -43,6 +46,12 @@ describe('RunJobCommand', () => {
     await command.run([SCHEDULED_JOBS.OrdersAutoCancel]);
 
     expect(ordersMock.cancelExpiredOrders).toHaveBeenCalledTimes(1);
+  });
+
+  it('runs the refund retry job', async () => {
+    await command.run([SCHEDULED_JOBS.PaymentRefundsRetry]);
+
+    expect(paymentsMock.retryStaleRefunds).toHaveBeenCalledTimes(1);
   });
 
   it('says when another run held the lock', async () => {
